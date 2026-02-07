@@ -1,0 +1,15 @@
+name: vton_auth
+version: 1.0.0+1
+description: Minimal Flutter web auth flow with JWT.
+publish_to: none
+
+environment:
+  sdk: ">=2.19.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+
+flutter:
+  uses-material-design: true
