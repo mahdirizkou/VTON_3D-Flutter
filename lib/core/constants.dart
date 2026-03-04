@@ -1,4 +1,5 @@
 const String baseUrl = 'http://127.0.0.1:8000';
+const String kBaseUrl = baseUrl;
 
 const String registerEndpoint = '/api/auth/register/';
 const String loginEndpoint = '/api/auth/login/';

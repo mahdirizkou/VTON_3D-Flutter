@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
 
-import 'features/auth/ui/login_page.dart';
+import 'features/glasses/ui/home_page.dart';
 
 void main() {
-  runApp(const AuthApp());
+  runApp(const VtonApp());
 }
 
-class AuthApp extends StatelessWidget {
-  const AuthApp({super.key});
+class VtonApp extends StatelessWidget {
+  const VtonApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'JWT Auth',
+      debugShowCheckedModeBanner: false,
+      title: 'VTON 3D Glasses',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1565C0)),
       ),
-      home: const LoginPage(),
+      home: const HomePage(),
     );
   }
 }
