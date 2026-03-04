@@ -1,6 +1,18 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
 
-void main() => runApp(const VtonApp());
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+// pubspec.yaml dependency: http: ^1.2.2
+
+// IMPORTANT:
+// - Chrome/Web: 127.0.0.1 works if Django runs on same PC.
+// - Android emulator: use 10.0.2.2
+// - Physical phone: use your PC LAN IP (e.g. http://192.168.1.10:8000)
+const String kBaseUrl = 'http://127.0.0.1:8000';
+
+void main() {
+  runApp(const VtonApp());
+}
 
 class VtonApp extends StatelessWidget {
   const VtonApp({super.key});
@@ -41,121 +53,36 @@ class _HomePageState extends State<HomePage> {
     'Aviator',
   ];
 
-  final List<GlassesItem> _allItems = const [
-    GlassesItem(
-      id: 'g1',
-      name: 'Aero Classic',
-      brand: 'Lumi Optics',
-      imageUrl: 'https://picsum.photos/seed/glasses1/900/600',
-      price: 149.0,
-      rating: 4.7,
-      tags: ['New', 'Men', 'Aviator', 'Popular'],
-    ),
-    GlassesItem(
-      id: 'g2',
-      name: 'Noir Square',
-      brand: 'Urban Lens',
-      imageUrl: 'https://picsum.photos/seed/glasses2/900/600',
-      price: 129.0,
-      rating: 4.4,
-      tags: ['Women', 'Square', 'Popular'],
-    ),
-    GlassesItem(
-      id: 'g3',
-      name: 'Halo Round',
-      brand: 'FrameLab',
-      imageUrl: 'https://picsum.photos/seed/glasses3/900/600',
-      price: 99.0,
-      rating: 4.2,
-      tags: ['Unisex', 'Round'],
-    ),
-    GlassesItem(
-      id: 'g4',
-      name: 'Edge Pro',
-      brand: 'Nexa Vision',
-      imageUrl: 'https://picsum.photos/seed/glasses4/900/600',
-      price: 179.0,
-      rating: 4.8,
-      tags: ['New', 'Unisex', 'Square', 'Popular'],
-    ),
-    GlassesItem(
-      id: 'g5',
-      name: 'Sunset Aviator',
-      brand: 'SkyShade',
-      imageUrl: 'https://picsum.photos/seed/glasses5/900/600',
-      price: 139.0,
-      rating: 4.5,
-      tags: ['Women', 'Aviator'],
-    ),
-    GlassesItem(
-      id: 'g6',
-      name: 'Metro Slim',
-      brand: 'CityFrame',
-      imageUrl: 'https://picsum.photos/seed/glasses6/900/600',
-      price: 119.0,
-      rating: 4.1,
-      tags: ['Men', 'Square'],
-    ),
-    GlassesItem(
-      id: 'g7',
-      name: 'Pearl Curve',
-      brand: 'Mira Eyewear',
-      imageUrl: 'https://picsum.photos/seed/glasses7/900/600',
-      price: 159.0,
-      rating: 4.6,
-      tags: ['New', 'Women', 'Round'],
-    ),
-    GlassesItem(
-      id: 'g8',
-      name: 'Terra Bold',
-      brand: 'Opticraft',
-      imageUrl: 'https://picsum.photos/seed/glasses8/900/600',
-      price: 189.0,
-      rating: 4.9,
-      tags: ['Popular', 'Unisex', 'Square'],
-    ),
-    GlassesItem(
-      id: 'g9',
-      name: 'Cloud Lite',
-      brand: 'FeatherView',
-      imageUrl: 'https://picsum.photos/seed/glasses9/900/600',
-      price: 109.0,
-      rating: 4.3,
-      tags: ['Men', 'Round'],
-    ),
-    GlassesItem(
-      id: 'g10',
-      name: 'Nova Air',
-      brand: 'Visionix',
-      imageUrl: 'https://picsum.photos/seed/glasses10/900/600',
-      price: 169.0,
-      rating: 4.7,
-      tags: ['New', 'Unisex', 'Aviator'],
-    ),
-  ];
+  List<GlassesItem> _items = [];
+  bool _isLoading = true;
+  String? _error;
 
   String _selectedCategory = 'All';
   String _searchQuery = '';
-  final Set<String> _favorites = <String>{};
+  final Set<int> _favorites = <int>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGlasses();
+  }
 
   List<GlassesItem> get _filteredItems {
-    return _allItems.where((item) {
+    return _items.where((item) {
       final bool categoryMatch = _selectedCategory == 'All' ||
-          item.tags.map((e) => e.toLowerCase()).contains(
-                _selectedCategory.toLowerCase(),
-              );
-
+          item.tags
+              .map((e) => e.toLowerCase())
+              .contains(_selectedCategory.toLowerCase());
       final String q = _searchQuery.trim().toLowerCase();
       final bool searchMatch = q.isEmpty ||
           item.name.toLowerCase().contains(q) ||
-          item.brand.toLowerCase().contains(q) ||
+          (item.brand ?? '').toLowerCase().contains(q) ||
           item.tags.any((tag) => tag.toLowerCase().contains(q));
-
       return categoryMatch && searchMatch;
     }).toList();
   }
 
-  List<GlassesItem> get _recentlyTried => _allItems.take(6).toList();
+  List<GlassesItem> get _recentlyTried => _items.take(6).toList();
 
   @override
   void dispose() {
@@ -163,7 +90,78 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _toggleFavorite(String id) {
+  Future<void> _fetchGlasses() async {
+    setState(() {
+      _error = null;
+      _isLoading = true;
+    });
+
+    try {
+      final Uri uri = Uri.parse('$kBaseUrl/api/glasses2/glasses/');
+      final http.Response response = await http.get(uri);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic decoded = jsonDecode(response.body);
+        if (decoded is! List) {
+          throw Exception('Unexpected response format');
+        }
+
+        final List<GlassesItem> loaded = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(GlassesItem.fromJson)
+            .toList();
+
+        if (!mounted) return;
+        setState(() {
+          _items = loaded;
+        });
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error =
+            'Could not load glasses. Please check your connection and try again.';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<GlassesItem> _fetchTryOnPayload(GlassesItem item) async {
+    final Uri uri =
+        Uri.parse('$kBaseUrl/api/glasses2/glasses/${item.id}/tryon/');
+    final http.Response response = await http.get(uri);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('HTTP ${response.statusCode}');
+    }
+
+    final dynamic decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Unexpected response format');
+    }
+
+    final dynamic positionRaw = decoded['position_offset'];
+    final dynamic rotationRaw = decoded['rotation_offset'];
+
+    return item.copyWith(
+      glbUrl: decoded['glb_url']?.toString(),
+      scale: _parseDouble(decoded['scale']),
+      positionOffset:
+          positionRaw is Map<String, dynamic> ? Vec3.fromJson(positionRaw) : null,
+      rotationOffset:
+          rotationRaw is Map<String, dynamic> ? Vec3.fromJson(rotationRaw) : null,
+      anchor: decoded['anchor']?.toString(),
+      version: decoded['version']?.toString(),
+    );
+  }
+
+  void _toggleFavorite(int id) {
     setState(() {
       if (_favorites.contains(id)) {
         _favorites.remove(id);
@@ -173,14 +171,37 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _openTryOn([GlassesItem? item]) {
-    final GlassesItem selected =
-        item ?? (_filteredItems.isNotEmpty ? _filteredItems.first : _allItems.first);
+  Future<void> _openTryOn([GlassesItem? item]) async {
+    final GlassesItem? selected =
+        item ?? (_filteredItems.isNotEmpty ? _filteredItems.first : null);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => TryOnPage(item: selected)),
-    );
+    if (selected == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No glasses available yet.')),
+      );
+      return;
+    }
+
+    try {
+      final GlassesItem enriched = await _fetchTryOnPayload(selected);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TryOnPage(item: enriched)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Could not load try-on data. Opening item details only.')),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TryOnPage(item: selected)),
+      );
+    }
   }
 
   @override
@@ -212,7 +233,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NotificationsPage()),
+                MaterialPageRoute(builder: (_) => const NotificationsPage()),
               );
             },
           ),
@@ -229,7 +250,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
               );
             },
           ),
@@ -237,146 +258,177 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-          children: [
-            _HeroCard(onStartTryOn: _openTryOn),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search by frame, brand, style...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? _ErrorState(error: _error!, onRetry: _fetchGlasses)
+                : _items.isEmpty
+                    ? RefreshIndicator(
+                        onRefresh: _fetchGlasses,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          children: const [
+                            SizedBox(height: 140),
+                            _EmptyState(
+                              title: 'No glasses found',
+                              subtitle: 'Pull to refresh and try again.',
+                            ),
+                          ],
+                        ),
                       )
-                    : null,
-                filled: true,
-                fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.35),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onSubmitted: (value) => setState(() => _searchQuery = value),
-              onChanged: (value) => setState(() => _searchQuery = value),
-            ),
-            const SizedBox(height: 14),
-
-            // ✅ FIXED: separatorBuilder params
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _categories.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final String category = _categories[index];
-                  final bool selected = category == _selectedCategory;
-                  return ChoiceChip(
-                    selected: selected,
-                    label: Text(category),
-                    onSelected: (value) {
-                      setState(() => _selectedCategory = category);
-                    },
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            _SectionHeader(
-              title: 'Featured Glasses',
-              trailing: '${_filteredItems.length} items',
-            ),
-            const SizedBox(height: 10),
-
-            SizedBox(
-              height: 280,
-              child: _filteredItems.isEmpty
-                  ? const _EmptyState(
-                      title: 'No glasses found',
-                      subtitle: 'Try another search or category.',
-                    )
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _filteredItems.length,
-                      // ✅ FIXED
-                      separatorBuilder: (context, index) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final GlassesItem item = _filteredItems[index];
-                        final bool isFavorite = _favorites.contains(item.id);
-                        return _FeaturedCard(
-                          item: item,
-                          width: featuredCardWidth,
-                          isFavorite: isFavorite,
-                          onFavoriteTap: () => _toggleFavorite(item.id),
-                          onTryTap: () => _openTryOn(item),
-                        );
-                      },
-                    ),
-            ),
-
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Recently Tried'),
-            const SizedBox(height: 10),
-
-            SizedBox(
-              height: 160,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _recentlyTried.length,
-                // ✅ FIXED
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final GlassesItem item = _recentlyTried[index];
-                  return _RecentTryCard(
-                    item: item,
-                    onTryAgain: () => _openTryOn(item),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+                    : RefreshIndicator(
+                        onRefresh: _fetchGlasses,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                          children: [
+                            _HeroCard(onStartTryOn: () => _openTryOn()),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _searchController,
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: 'Search by frame, brand, style...',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      )
+                                    : null,
+                                filled: true,
+                                fillColor: colorScheme.surfaceContainerHighest
+                                    .withOpacity(0.35),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              onSubmitted: (value) {
+                                setState(() => _searchQuery = value);
+                              },
+                              onChanged: (value) {
+                                setState(() => _searchQuery = value);
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              height: 40,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _categories.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final String category = _categories[index];
+                                  final bool selected =
+                                      category == _selectedCategory;
+                                  return ChoiceChip(
+                                    selected: selected,
+                                    label: Text(category),
+                                    onSelected: (_) {
+                                      setState(
+                                          () => _selectedCategory = category);
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _SectionHeader(
+                              title: 'Featured Glasses',
+                              trailing: '${_filteredItems.length} items',
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 280,
+                              child: _filteredItems.isEmpty
+                                  ? const _EmptyState(
+                                      title: 'No glasses found',
+                                      subtitle:
+                                          'Try another search or category.',
+                                    )
+                                  : ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: _filteredItems.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 12),
+                                      itemBuilder: (context, index) {
+                                        final GlassesItem item =
+                                            _filteredItems[index];
+                                        final bool isFavorite =
+                                            _favorites.contains(item.id);
+                                        return _FeaturedCard(
+                                          item: item,
+                                          width: featuredCardWidth,
+                                          isFavorite: isFavorite,
+                                          onFavoriteTap: () =>
+                                              _toggleFavorite(item.id),
+                                          onTryTap: () => _openTryOn(item),
+                                        );
+                                      },
+                                    ),
+                            ),
+                            const SizedBox(height: 20),
+                            const _SectionHeader(title: 'Recently Tried'),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 160,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _recentlyTried.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 12),
+                                itemBuilder: (context, index) {
+                                  final GlassesItem item =
+                                      _recentlyTried[index];
+                                  return _RecentTryCard(
+                                    item: item,
+                                    onTryAgain: () => _openTryOn(item),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'Try-On'),
-          NavigationDestination(icon: Icon(Icons.explore_outlined), label: 'Explore'),
-          NavigationDestination(icon: Icon(Icons.favorite_outline), label: 'Favorites'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+          NavigationDestination(
+              icon: Icon(Icons.videocam_outlined), label: 'Try-On'),
+          NavigationDestination(
+              icon: Icon(Icons.explore_outlined), label: 'Explore'),
+          NavigationDestination(
+              icon: Icon(Icons.favorite_outline), label: 'Favorites'),
+          NavigationDestination(
+              icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
         onDestinationSelected: (index) {
           if (index == 0) return;
-
           if (index == 1) {
             _openTryOn();
             return;
           }
-
           if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ExplorePage()),
+              MaterialPageRoute(builder: (_) => const ExplorePage()),
             );
             return;
           }
-
           if (index == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => FavoritesPage(
-                  allItems: _allItems,
+                builder: (_) => FavoritesPage(
+                  allItems: _items,
                   favoriteIds: _favorites,
                   onToggleFavorite: _toggleFavorite,
                   onTryTap: _openTryOn,
@@ -385,10 +437,9 @@ class _HomePageState extends State<HomePage> {
             );
             return;
           }
-
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ProfilePage()),
+            MaterialPageRoute(builder: (_) => const ProfilePage()),
           );
         },
       ),
@@ -455,7 +506,8 @@ class _HeroCard extends StatelessWidget {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Step 1: Select frame. Step 2: Open camera. Step 3: Adjust fit.'),
+                      content: Text(
+                          'Step 1: Select frame. Step 2: Open camera. Step 3: Adjust fit.'),
                     ),
                   );
                 },
@@ -482,7 +534,10 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         if (trailing != null)
@@ -535,10 +590,13 @@ class _FeaturedCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: Image.network(
-                      item.imageUrl,
+                      item.thumbnailUrl ??
+                          'https://picsum.photos/seed/fallback_${item.id}/900/600',
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         alignment: Alignment.center,
                         child: const Icon(Icons.broken_image_outlined),
                       ),
@@ -549,7 +607,9 @@ class _FeaturedCard extends StatelessWidget {
                     right: 8,
                     child: IconButton.filledTonal(
                       onPressed: onFavoriteTap,
-                      icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+                      icon: Icon(isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border),
                     ),
                   ),
                 ],
@@ -564,10 +624,14 @@ class _FeaturedCard extends StatelessWidget {
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
-                  Text(item.brand, style: Theme.of(context).textTheme.bodySmall),
+                  Text(item.brand ?? 'Unknown brand',
+                      style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -578,7 +642,7 @@ class _FeaturedCard extends StatelessWidget {
                       const Spacer(),
                       const Icon(Icons.star, size: 18, color: Colors.amber),
                       const SizedBox(width: 3),
-                      Text(item.rating.toStringAsFixed(1)),
+                      Text((item.rating ?? 0).toStringAsFixed(1)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -629,11 +693,14 @@ class _RecentTryCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  item.imageUrl,
+                  item.thumbnailUrl ??
+                      'https://picsum.photos/seed/recent_${item.id}/900/600',
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     alignment: Alignment.center,
                     child: const Icon(Icons.broken_image_outlined),
                   ),
@@ -645,7 +712,10 @@ class _RecentTryCard extends StatelessWidget {
               item.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             Align(
               alignment: Alignment.centerRight,
@@ -673,7 +743,10 @@ class _EmptyState extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.35),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withOpacity(0.35),
       ),
       alignment: Alignment.center,
       child: Padding(
@@ -686,6 +759,39 @@ class _EmptyState extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.error, required this.onRetry});
+
+  final String error;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_outlined, size: 42),
+            const SizedBox(height: 12),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('Retry'),
+            ),
           ],
         ),
       ),
@@ -710,12 +816,15 @@ class TryOnPage extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Image.network(
-                item.imageUrl,
+                item.thumbnailUrl ??
+                    'https://picsum.photos/seed/tryon_${item.id}/900/600',
                 height: 260,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+                errorBuilder: (_, __, ___) => Container(
                   height: 260,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest,
                   alignment: Alignment.center,
                   child: const Icon(Icons.broken_image_outlined),
                 ),
@@ -723,11 +832,40 @@ class TryOnPage extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(item.name, style: Theme.of(context).textTheme.headlineSmall),
-            Text(item.brand, style: Theme.of(context).textTheme.bodyLarge),
+            Text(item.brand ?? 'Unknown brand',
+                style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 8),
-            Text('Price: \$${item.price.toStringAsFixed(0)}'),
-            Text('Rating: ${item.rating.toStringAsFixed(1)}'),
-            const Spacer(),
+            Text('Price: \$${item.price.toStringAsFixed(2)}'),
+            Text('Rating: ${(item.rating ?? 0).toStringAsFixed(1)}'),
+            const SizedBox(height: 10),
+            Expanded(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Try-On Payload',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text('glb_url: ${item.glbUrl ?? '-'}'),
+                        Text('scale: ${item.scale?.toStringAsFixed(3) ?? '-'}'),
+                        Text(
+                          'position_offset: ${item.positionOffset != null ? item.positionOffset!.toInlineString() : '-'}',
+                        ),
+                        Text(
+                          'rotation_offset: ${item.rotationOffset != null ? item.rotationOffset!.toInlineString() : '-'}',
+                        ),
+                        Text('anchor: ${item.anchor ?? '-'}'),
+                        Text('version: ${item.version ?? '-'}'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -810,8 +948,8 @@ class FavoritesPage extends StatelessWidget {
   });
 
   final List<GlassesItem> allItems;
-  final Set<String> favoriteIds;
-  final ValueChanged<String> onToggleFavorite;
+  final Set<int> favoriteIds;
+  final ValueChanged<int> onToggleFavorite;
   final ValueChanged<GlassesItem> onTryTap;
 
   @override
@@ -822,12 +960,13 @@ class FavoritesPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Favorites')),
       body: favorites.isEmpty
-          ? const Center(child: Text('No favorites yet. Save frames you like.'))
+          ? const Center(
+              child: Text('No favorites yet. Save frames you like.'),
+            )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: favorites.length,
-              // ✅ FIXED
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final GlassesItem item = favorites[index];
                 return Card(
@@ -835,14 +974,24 @@ class FavoritesPage extends StatelessWidget {
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        item.imageUrl,
+                        item.thumbnailUrl ??
+                            'https://picsum.photos/seed/fav_${item.id}/300/300',
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 50,
+                          height: 50,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image_outlined, size: 18),
+                        ),
                       ),
                     ),
                     title: Text(item.name),
-                    subtitle: Text('${item.brand} • \$${item.price.toStringAsFixed(0)}'),
+                    subtitle: Text(
+                        '${item.brand ?? 'Unknown brand'} • \$${item.price.toStringAsFixed(2)}'),
                     trailing: Wrap(
                       spacing: 6,
                       children: [
@@ -907,17 +1056,114 @@ class GlassesItem {
     required this.id,
     required this.name,
     required this.brand,
-    required this.imageUrl,
+    required this.thumbnailUrl,
     required this.price,
     required this.rating,
     required this.tags,
+    this.glbUrl,
+    this.scale,
+    this.positionOffset,
+    this.rotationOffset,
+    this.anchor,
+    this.version,
   });
 
-  final String id;
+  factory GlassesItem.fromJson(Map<String, dynamic> json) {
+    final dynamic tagsRaw = json['tags'];
+    final List<String> parsedTags = tagsRaw is List
+        ? tagsRaw
+            .map((e) {
+              if (e is String) return e;
+              if (e is Map<String, dynamic>) {
+                if (e['name'] != null) return e['name'].toString();
+                if (e['label'] != null) return e['label'].toString();
+              }
+              return e.toString();
+            })
+            .where((tag) => tag.trim().isNotEmpty)
+            .toList()
+        : <String>[];
+
+    return GlassesItem(
+      id: _parseInt(json['id']) ?? 0,
+      name: json['name']?.toString() ?? 'Unnamed',
+      brand: json['brand']?.toString(),
+      thumbnailUrl: json['thumbnail_url']?.toString(),
+      price: _parseDouble(json['price']) ?? 0,
+      rating: _parseDouble(json['rating']),
+      tags: parsedTags,
+    );
+  }
+
+  final int id;
   final String name;
-  final String brand;
-  final String imageUrl;
+  final String? brand;
+  final String? thumbnailUrl;
   final double price;
-  final double rating;
+  final double? rating;
   final List<String> tags;
+
+  final String? glbUrl;
+  final double? scale;
+  final Vec3? positionOffset;
+  final Vec3? rotationOffset;
+  final String? anchor;
+  final String? version;
+
+  GlassesItem copyWith({
+    String? glbUrl,
+    double? scale,
+    Vec3? positionOffset,
+    Vec3? rotationOffset,
+    String? anchor,
+    String? version,
+  }) {
+    return GlassesItem(
+      id: id,
+      name: name,
+      brand: brand,
+      thumbnailUrl: thumbnailUrl,
+      price: price,
+      rating: rating,
+      tags: tags,
+      glbUrl: glbUrl ?? this.glbUrl,
+      scale: scale ?? this.scale,
+      positionOffset: positionOffset ?? this.positionOffset,
+      rotationOffset: rotationOffset ?? this.rotationOffset,
+      anchor: anchor ?? this.anchor,
+      version: version ?? this.version,
+    );
+  }
+}
+
+class Vec3 {
+  const Vec3({required this.x, required this.y, required this.z});
+
+  factory Vec3.fromJson(Map<String, dynamic> json) {
+    return Vec3(
+      x: _parseDouble(json['x']) ?? 0,
+      y: _parseDouble(json['y']) ?? 0,
+      z: _parseDouble(json['z']) ?? 0,
+    );
+  }
+
+  final double x;
+  final double y;
+  final double z;
+
+  String toInlineString() =>
+      'x=${x.toStringAsFixed(3)}, y=${y.toStringAsFixed(3)}, z=${z.toStringAsFixed(3)}';
+}
+
+double? _parseDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
