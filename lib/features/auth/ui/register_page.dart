@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../data/auth_api.dart';
+import '../../glasses/ui/home_page.dart';
 import 'login_page.dart';
-import 'profile_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -43,12 +43,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ProfilePage()),
+        MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) {

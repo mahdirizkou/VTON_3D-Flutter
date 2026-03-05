@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/errors/api_exceptions.dart';
+import '../../../core/token_store.dart';
+import '../../auth/ui/login_page.dart';
 import '../data/glasses_api.dart';
 import '../models/glasses_item.dart';
+import '../../auth/ui/profile_page.dart';
 import 'explore_page.dart';
 import 'favorites_page.dart';
 import 'notifications_page.dart';
-import 'profile_page.dart';
 import 'try_on_page.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/error_state.dart';
@@ -84,6 +87,10 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _items = loaded;
       });
+    } on ApiUnauthorizedException catch (e) {
+      if (!mounted) return;
+      await _redirectToLogin(message: e.toString());
+      return;
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -125,6 +132,9 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(builder: (_) => TryOnPage(item: enriched)),
       );
+    } on ApiUnauthorizedException catch (e) {
+      if (!mounted) return;
+      await _redirectToLogin(message: e.toString());
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +145,20 @@ class _HomePageState extends State<HomePage> {
         MaterialPageRoute(builder: (_) => TryOnPage(item: selected)),
       );
     }
+  }
+
+  Future<void> _redirectToLogin({String? message}) async {
+    await TokenStore.instance.clearTokens();
+    if (!mounted) return;
+    if (message != null && message.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
   }
 
   @override

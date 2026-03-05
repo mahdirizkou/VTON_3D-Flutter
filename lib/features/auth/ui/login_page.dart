@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/auth_api.dart';
-import 'profile_page.dart';
+import '../../glasses/ui/home_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -40,12 +40,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ProfilePage()),
+        MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) {

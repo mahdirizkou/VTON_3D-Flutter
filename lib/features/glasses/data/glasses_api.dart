@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/constants.dart';
+import '../../../core/errors/api_exceptions.dart';
 import '../models/glasses_item.dart';
 import '../models/vec3.dart';
 import '../../../core/utils/parsers.dart';
@@ -14,6 +15,9 @@ class GlassesApi {
     final Uri uri = Uri.parse('$kBaseUrl/api/glasses2/glasses/');
     final http.Response response = await http.get(uri);
 
+    if (response.statusCode == 401) {
+      throw const ApiUnauthorizedException('Session expired. Please log in again.');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('HTTP ${response.statusCode}');
     }
@@ -33,6 +37,9 @@ class GlassesApi {
     final Uri uri = Uri.parse('$kBaseUrl/api/glasses2/glasses/${item.id}/tryon/');
     final http.Response response = await http.get(uri);
 
+    if (response.statusCode == 401) {
+      throw const ApiUnauthorizedException('Session expired. Please log in again.');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('HTTP ${response.statusCode}');
     }
