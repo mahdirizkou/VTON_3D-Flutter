@@ -10,6 +10,7 @@ class FeaturedCard extends StatelessWidget {
     required this.isFavorite,
     required this.onFavoriteTap,
     required this.onTryTap,
+    required this.onBuyTap,
   });
 
   final GlassesItem item;
@@ -17,6 +18,7 @@ class FeaturedCard extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTryTap;
+  final VoidCallback onBuyTap;
 
   @override
   Widget build(BuildContext context) {
@@ -90,12 +92,23 @@ class FeaturedCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: onTryTap,
-                      child: const Text('Try'),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: onTryTap,
+                          child: const Text('Try'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onBuyTap,
+                          icon: const Icon(Icons.shopping_cart_outlined),
+                          label: const Text('Buy'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

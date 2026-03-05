@@ -6,6 +6,8 @@ import '../../auth/ui/login_page.dart';
 import '../data/glasses_api.dart';
 import '../models/glasses_item.dart';
 import '../../auth/ui/profile_page.dart';
+import '../../cart/data/cart_controller.dart';
+import '../../cart/ui/widgets/cart_badge_icon.dart';
 import 'explore_page.dart';
 import 'favorites_page.dart';
 import 'notifications_page.dart';
@@ -51,6 +53,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    CartController.instance.ensureLoaded();
     _fetchGlasses();
   }
 
@@ -112,6 +115,14 @@ class _HomePageState extends State<HomePage> {
         _favorites.add(id);
       }
     });
+  }
+
+  Future<void> _addToCart(GlassesItem item) async {
+    await CartController.instance.addFromGlasses(item);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${item.name} added to cart')),
+    );
   }
 
   Future<void> _openTryOn([GlassesItem? item]) async {
@@ -185,6 +196,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
+          const CartBadgeIcon(),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
@@ -317,6 +329,7 @@ class _HomePageState extends State<HomePage> {
                                           isFavorite: isFavorite,
                                           onFavoriteTap: () => _toggleFavorite(item.id),
                                           onTryTap: () => _openTryOn(item),
+                                          onBuyTap: () => _addToCart(item),
                                         );
                                       },
                                     ),

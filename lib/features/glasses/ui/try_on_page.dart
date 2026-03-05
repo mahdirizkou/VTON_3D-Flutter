@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../cart/data/cart_controller.dart';
 import '../models/glasses_item.dart';
 
 class TryOnPage extends StatelessWidget {
@@ -72,6 +73,18 @@ class TryOnPage extends StatelessWidget {
               },
               icon: const Icon(Icons.camera_alt_outlined),
               label: const Text('Open Camera'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                await CartController.instance.addFromGlasses(item);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Added to cart')),
+                );
+              },
+              icon: const Icon(Icons.shopping_cart_outlined),
+              label: const Text('Add to Cart'),
             ),
           ],
         ),
