@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../glasses/ui/home_page.dart';
+import '../../orders/models/order_item.dart';
 import '../../orders/ui/checkout_page.dart';
 import '../data/cart_controller.dart';
-import '../models/cart_item.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -12,9 +13,6 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
-  static const double _shipping = 4.99;
-  static const double _taxRate = 0.08;
-
   @override
   void initState() {
     super.initState();
@@ -26,21 +24,28 @@ class _CartPageState extends State<CartPage> {
     return AnimatedBuilder(
       animation: CartController.instance,
       builder: (context, _) {
-        final items = CartController.instance.items;
-        final subtotal = CartController.instance.subtotal;
-        final tax = subtotal * _taxRate;
-        final shipping = items.isEmpty ? 0.0 : _shipping;
-        final total = subtotal + tax + shipping;
+        final List<OrderItem> items = CartController.instance.items;
+        final double subtotal = CartController.instance.subtotal;
+        const double shipping = 0.0;
+        const double tax = 0.0;
+        final double total = subtotal + shipping + tax;
 
         return Scaffold(
           appBar: AppBar(title: const Text('Cart')),
           body: items.isEmpty
-              ? const Center(child: Text('Your cart is empty.'))
+              ? _EmptyCart(
+                  onBackHome: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const HomePage()),
+                      (route) => false,
+                    );
+                  },
+                )
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
                     ...items.map((item) => _CartItemTile(item: item)),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(14),
@@ -68,7 +73,7 @@ class _CartPageState extends State<CartPage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => CheckoutPage(
-                              items: items,
+                              items: List<OrderItem>.from(items),
                               subtotal: subtotal,
                               shipping: shipping,
                               tax: tax,
@@ -87,42 +92,56 @@ class _CartPageState extends State<CartPage> {
   }
 }
 
+class _EmptyCart extends StatelessWidget {
+  const _EmptyCart({required this.onBackHome});
+
+  final VoidCallback onBackHome;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.shopping_cart_outlined, size: 54),
+            const SizedBox(height: 12),
+            Text('Your cart is empty', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: onBackHome,
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CartItemTile extends StatelessWidget {
   const _CartItemTile({required this.item});
 
-  final CartItem item;
+  final OrderItem item;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                item.thumbnailUrl ?? 'https://picsum.photos/seed/cart_${item.itemId}/300/300',
-                width: 64,
-                height: 64,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 64,
-                  height: 64,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Icon(Icons.broken_image_outlined),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.name, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text('\$${item.unitPrice.toStringAsFixed(2)} each'),
                   const SizedBox(height: 4),
-                  Text('\$${item.price.toStringAsFixed(2)}'),
+                  Text('Line total: \$${item.lineTotal.toStringAsFixed(2)}'),
                 ],
               ),
             ),
@@ -130,16 +149,16 @@ class _CartItemTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  onPressed: () => CartController.instance.decrement(item.itemId),
+                  onPressed: () => CartController.instance.decrement(item.glassesId),
                   icon: const Icon(Icons.remove_circle_outline),
                 ),
                 Text('${item.quantity}'),
                 IconButton(
-                  onPressed: () => CartController.instance.increment(item.itemId),
+                  onPressed: () => CartController.instance.increment(item.glassesId),
                   icon: const Icon(Icons.add_circle_outline),
                 ),
                 IconButton(
-                  onPressed: () => CartController.instance.removeItem(item.itemId),
+                  onPressed: () => CartController.instance.remove(item.glassesId),
                   icon: const Icon(Icons.delete_outline),
                 ),
               ],
@@ -164,7 +183,7 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = bold
+    final TextStyle? style = bold
         ? Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)
         : Theme.of(context).textTheme.bodyMedium;
     return Padding(

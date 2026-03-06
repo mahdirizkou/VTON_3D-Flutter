@@ -1,65 +1,81 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../glasses/models/glasses_item.dart';
-import '../models/cart_item.dart';
-import 'cart_store.dart';
+import '../../orders/models/order_item.dart';
 
 class CartController extends ChangeNotifier {
   CartController._();
 
   static final CartController instance = CartController._();
 
-  final CartStore _store = CartStore();
-  List<CartItem> _items = <CartItem>[];
+  static const String _storageKey = 'cart_items';
+
+  List<OrderItem> _items = <OrderItem>[];
   bool _isLoaded = false;
 
-  List<CartItem> get items => List.unmodifiable(_items);
+  List<OrderItem> get items => List<OrderItem>.unmodifiable(_items);
   bool get isLoaded => _isLoaded;
-
   int get totalCount => _items.fold<int>(0, (sum, item) => sum + item.quantity);
-  double get subtotal => _items.fold<double>(0, (sum, item) => sum + item.lineTotal);
+  double get subtotal => _items.fold<double>(0.0, (sum, item) => sum + item.lineTotal);
 
   Future<void> ensureLoaded() async {
     if (_isLoaded) return;
-    _items = await _store.loadCart();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? raw = prefs.getString(_storageKey);
+    if (raw == null || raw.trim().isEmpty) {
+      _items = <OrderItem>[];
+    } else {
+      try {
+        final dynamic decoded = jsonDecode(raw);
+        if (decoded is List) {
+          _items = decoded
+              .whereType<Map>()
+              .map((e) => OrderItem.fromCartJson(Map<String, dynamic>.from(e)))
+              .toList();
+        } else {
+          _items = <OrderItem>[];
+        }
+      } catch (_) {
+        _items = <OrderItem>[];
+      }
+    }
     _isLoaded = true;
     notifyListeners();
   }
 
-  Future<void> addFromGlasses(GlassesItem item, {int quantity = 1}) async {
+  Future<void> addItem(OrderItem item) async {
     await ensureLoaded();
-    final index = _items.indexWhere((e) => e.itemId == item.id);
+    final int index = _items.indexWhere((e) => e.glassesId == item.glassesId);
     if (index >= 0) {
-      final current = _items[index];
-      _items[index] = current.copyWith(quantity: current.quantity + quantity);
+      final OrderItem current = _items[index];
+      _items[index] = current.copyWith(quantity: current.quantity + item.quantity);
     } else {
-      _items.add(
-        CartItem(
-          itemId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: quantity,
-          thumbnailUrl: item.thumbnailUrl,
-        ),
-      );
+      _items.add(item);
     }
     await _persistAndNotify();
   }
 
-  Future<void> increment(int itemId) async {
+  Future<void> addFromGlasses(GlassesItem item, {int quantity = 1}) async {
+    await addItem(OrderItem.fromGlasses(item, quantity: quantity));
+  }
+
+  Future<void> increment(int glassesId) async {
     await ensureLoaded();
-    final index = _items.indexWhere((e) => e.itemId == itemId);
+    final int index = _items.indexWhere((e) => e.glassesId == glassesId);
     if (index < 0) return;
-    final current = _items[index];
+    final OrderItem current = _items[index];
     _items[index] = current.copyWith(quantity: current.quantity + 1);
     await _persistAndNotify();
   }
 
-  Future<void> decrement(int itemId) async {
+  Future<void> decrement(int glassesId) async {
     await ensureLoaded();
-    final index = _items.indexWhere((e) => e.itemId == itemId);
+    final int index = _items.indexWhere((e) => e.glassesId == glassesId);
     if (index < 0) return;
-    final current = _items[index];
+    final OrderItem current = _items[index];
     if (current.quantity <= 1) {
       _items.removeAt(index);
     } else {
@@ -68,21 +84,24 @@ class CartController extends ChangeNotifier {
     await _persistAndNotify();
   }
 
-  Future<void> removeItem(int itemId) async {
+  Future<void> remove(int glassesId) async {
     await ensureLoaded();
-    _items.removeWhere((e) => e.itemId == itemId);
+    _items.removeWhere((e) => e.glassesId == glassesId);
     await _persistAndNotify();
   }
 
-  Future<void> clearCart() async {
-    _items = <CartItem>[];
+  Future<void> clear() async {
+    _items = <OrderItem>[];
     _isLoaded = true;
-    await _store.clearCart();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
     notifyListeners();
   }
 
   Future<void> _persistAndNotify() async {
-    await _store.saveCart(_items);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String encoded = jsonEncode(_items.map((e) => e.toCartJson()).toList());
+    await prefs.setString(_storageKey, encoded);
     notifyListeners();
   }
 }

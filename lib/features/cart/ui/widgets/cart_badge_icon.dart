@@ -8,10 +8,11 @@ class CartBadgeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    CartController.instance.ensureLoaded();
     return AnimatedBuilder(
       animation: CartController.instance,
       builder: (context, _) {
-        final count = CartController.instance.totalCount;
+        final int count = CartController.instance.totalCount;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -38,7 +39,7 @@ class CartBadgeIcon extends StatelessWidget {
                     count > 99 ? '99+' : '$count',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onError,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                   ),
                 ),

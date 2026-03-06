@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../cart/models/cart_item.dart';
+import '../models/order_item.dart';
 import '../models/shipping_info.dart';
 import 'payment_page.dart';
 
@@ -14,7 +14,7 @@ class CheckoutPage extends StatefulWidget {
     required this.total,
   });
 
-  final List<CartItem> items;
+  final List<OrderItem> items;
   final double subtotal;
   final double shipping;
   final double tax;

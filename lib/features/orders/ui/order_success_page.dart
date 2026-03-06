@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../cart/models/cart_item.dart';
 import '../../glasses/ui/home_page.dart';
 import '../models/order.dart';
+import '../models/order_item.dart';
 
 class OrderSuccessPage extends StatelessWidget {
   const OrderSuccessPage({
@@ -12,7 +12,7 @@ class OrderSuccessPage extends StatelessWidget {
   });
 
   final Order order;
-  final List<CartItem> items;
+  final List<OrderItem> items;
 
   @override
   Widget build(BuildContext context) {

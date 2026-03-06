@@ -4,9 +4,9 @@ import '../../../core/errors/api_exceptions.dart';
 import '../../../core/token_store.dart';
 import '../../auth/ui/login_page.dart';
 import '../../cart/data/cart_controller.dart';
-import '../../cart/models/cart_item.dart';
 import '../data/orders_api.dart';
 import '../models/order.dart';
+import '../models/order_item.dart';
 import '../models/shipping_info.dart';
 import 'order_success_page.dart';
 
@@ -18,7 +18,7 @@ class PaymentPage extends StatefulWidget {
     required this.total,
   });
 
-  final List<CartItem> items;
+  final List<OrderItem> items;
   final ShippingInfo shipping;
   final double total;
 
@@ -143,7 +143,7 @@ class _PaymentPageState extends State<PaymentPage> {
         paymentMethod: 'mock_card',
       );
 
-      await CartController.instance.clearCart();
+      await CartController.instance.clear();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(

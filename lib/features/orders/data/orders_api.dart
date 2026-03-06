@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants.dart';
 import '../../../core/errors/api_exceptions.dart';
 import '../../../core/token_store.dart';
-import '../../cart/models/cart_item.dart';
 import '../models/order.dart';
+import '../models/order_item.dart';
 import '../models/shipping_info.dart';
 
 class OrdersApi {
@@ -15,7 +15,7 @@ class OrdersApi {
   final http.Client _client;
 
   Future<Order> createOrder({
-    required List<CartItem> items,
+    required List<OrderItem> items,
     required ShippingInfo shipping,
     String paymentMethod = 'mock_card',
   }) async {
@@ -31,14 +31,7 @@ class OrdersApi {
         'Authorization': 'Bearer $access',
       },
       body: jsonEncode({
-        'items': items
-            .map(
-              (e) => {
-                'glasses_id': e.itemId,
-                'quantity': e.quantity,
-              },
-            )
-            .toList(),
+        'items': items.map((e) => e.toOrderJson()).toList(),
         'shipping': shipping.toJson(),
         'payment_method': paymentMethod,
       }),
