@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-import '../data/auth_api.dart';
+import '../../../core/token_store.dart';
 import '../../glasses/ui/home_page.dart';
+import '../data/auth_api.dart';
+import '../data/social_auth_api.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,6 +19,8 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _authApi = AuthApi();
+  final _socialAuthApi = SocialAuthApi();
+  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile', 'openid']);
 
   bool _isLoading = false;
 
@@ -46,6 +51,56 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return;
+      }
+
+      final authentication = await googleUser.authentication;
+      final idToken = authentication.idToken;
+      final accessToken = authentication.accessToken;
+
+      final data = await _socialAuthApi.googleLogin(
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      final access = data['access'] as String?;
+      final refresh = data['refresh'] as String?;
+
+      if (access == null || access.isEmpty || refresh == null || refresh.isEmpty) {
+        throw Exception('Missing tokens in response.');
+      }
+
+      await TokenStore.instance.saveTokens(access: access, refresh: refresh);
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomePage()),
+        (route) => false,
+      );
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      final lower = message.toLowerCase();
+      if (lower.contains('401') ||
+          lower.contains('unauthorized') ||
+          lower.contains('expired')) {
+        await TokenStore.instance.clearTokens();
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message.isEmpty ? 'Google login failed.' : message)),
       );
     } finally {
       if (mounted) {
@@ -111,6 +166,17 @@ class _LoginPageState extends State<LoginPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('Login'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _isLoading ? null : _handleGoogleLogin,
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Continue with Google'),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
