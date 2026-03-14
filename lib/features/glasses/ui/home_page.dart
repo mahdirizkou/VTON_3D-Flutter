@@ -3,15 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../core/errors/api_exceptions.dart';
 import '../../../core/token_store.dart';
 import '../../auth/ui/login_page.dart';
+import '../../auth/ui/profile_page.dart';
 import '../../cart/data/cart_controller.dart';
 import '../../cart/ui/widgets/cart_badge_icon.dart';
+import '../../orders/models/order_item.dart';
 import '../data/glasses_api.dart';
 import '../models/glasses_item.dart';
-import '../../auth/ui/profile_page.dart';
-import '../../orders/models/order_item.dart';
 import 'explore_page.dart';
 import 'favorites_page.dart';
 import 'notifications_page.dart';
+import 'product_details_page.dart';
 import 'try_on_page.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/error_state.dart';
@@ -31,7 +32,7 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   final GlassesApi _glassesApi = const GlassesApi();
 
-  final List<String> _categories = const [
+  final List<String> _categories = const <String>[
     'All',
     'New',
     'Popular',
@@ -43,7 +44,7 @@ class _HomePageState extends State<HomePage> {
     'Aviator',
   ];
 
-  List<GlassesItem> _items = [];
+  List<GlassesItem> _items = <GlassesItem>[];
   bool _isLoading = true;
   String? _error;
 
@@ -59,14 +60,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<GlassesItem> get _filteredItems {
-    return _items.where((item) {
+    return _items.where((GlassesItem item) {
       final bool categoryMatch = _selectedCategory == 'All' ||
-          item.tags.map((e) => e.toLowerCase()).contains(_selectedCategory.toLowerCase());
+          item.tags.map((String e) => e.toLowerCase()).contains(_selectedCategory.toLowerCase());
       final String q = _searchQuery.trim().toLowerCase();
       final bool searchMatch = q.isEmpty ||
           item.name.toLowerCase().contains(q) ||
           (item.brand ?? '').toLowerCase().contains(q) ||
-          item.tags.any((tag) => tag.toLowerCase().contains(q));
+          item.tags.any((String tag) => tag.toLowerCase().contains(q));
       return categoryMatch && searchMatch;
     }).toList();
   }
@@ -129,6 +130,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openProductDetails(GlassesItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDetailsPage(
+          item: item,
+          isFavorite: _favorites.contains(item.id),
+          onFavoriteToggle: _toggleFavorite,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openTryOn([GlassesItem? item]) async {
     final GlassesItem? selected = item ?? (_filteredItems.isNotEmpty ? _filteredItems.first : null);
 
@@ -172,7 +186,7 @@ class _HomePageState extends State<HomePage> {
     }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -199,7 +213,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        actions: [
+        actions: <Widget>[
           const CartBadgeIcon(),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -241,7 +255,7 @@ class _HomePageState extends State<HomePage> {
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
-                          children: const [
+                          children: const <Widget>[
                             SizedBox(height: 140),
                             EmptyState(
                               title: 'No glasses found',
@@ -255,7 +269,7 @@ class _HomePageState extends State<HomePage> {
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                          children: [
+                          children: <Widget>[
                             HeroCard(onStartTryOn: () => _openTryOn()),
                             const SizedBox(height: 16),
                             TextField(
@@ -280,10 +294,10 @@ class _HomePageState extends State<HomePage> {
                                   borderSide: BorderSide.none,
                                 ),
                               ),
-                              onSubmitted: (value) {
+                              onSubmitted: (String value) {
                                 setState(() => _searchQuery = value);
                               },
-                              onChanged: (value) {
+                              onChanged: (String value) {
                                 setState(() => _searchQuery = value);
                               },
                             ),
@@ -294,7 +308,7 @@ class _HomePageState extends State<HomePage> {
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _categories.length,
                                 separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                itemBuilder: (context, index) {
+                                itemBuilder: (BuildContext context, int index) {
                                   final String category = _categories[index];
                                   final bool selected = category == _selectedCategory;
                                   return ChoiceChip(
@@ -324,7 +338,7 @@ class _HomePageState extends State<HomePage> {
                                       scrollDirection: Axis.horizontal,
                                       itemCount: _filteredItems.length,
                                       separatorBuilder: (_, __) => const SizedBox(width: 12),
-                                      itemBuilder: (context, index) {
+                                      itemBuilder: (BuildContext context, int index) {
                                         final GlassesItem item = _filteredItems[index];
                                         final bool isFavorite = _favorites.contains(item.id);
                                         return FeaturedCard(
@@ -334,6 +348,7 @@ class _HomePageState extends State<HomePage> {
                                           onFavoriteTap: () => _toggleFavorite(item.id),
                                           onTryTap: () => _openTryOn(item),
                                           onBuyTap: () => _buyNow(item),
+                                          onTap: () => _openProductDetails(item),
                                         );
                                       },
                                     ),
@@ -347,11 +362,12 @@ class _HomePageState extends State<HomePage> {
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _recentlyTried.length,
                                 separatorBuilder: (_, __) => const SizedBox(width: 12),
-                                itemBuilder: (context, index) {
+                                itemBuilder: (BuildContext context, int index) {
                                   final GlassesItem item = _recentlyTried[index];
                                   return RecentTryCard(
                                     item: item,
                                     onTryAgain: () => _openTryOn(item),
+                                    onTap: () => _openProductDetails(item),
                                   );
                                 },
                               ),
@@ -362,14 +378,14 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
-        destinations: const [
+        destinations: const <NavigationDestination>[
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.videocam_outlined), label: 'Try-On'),
           NavigationDestination(icon: Icon(Icons.explore_outlined), label: 'Explore'),
           NavigationDestination(icon: Icon(Icons.favorite_outline), label: 'Favorites'),
           NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
-        onDestinationSelected: (index) {
+        onDestinationSelected: (int index) {
           if (index == 0) return;
           if (index == 1) {
             _openTryOn();
@@ -391,6 +407,7 @@ class _HomePageState extends State<HomePage> {
                   favoriteIds: _favorites,
                   onToggleFavorite: _toggleFavorite,
                   onTryTap: _openTryOn,
+                  onItemTap: _openProductDetails,
                 ),
               ),
             );

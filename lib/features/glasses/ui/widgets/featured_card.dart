@@ -11,6 +11,7 @@ class FeaturedCard extends StatelessWidget {
     required this.onFavoriteTap,
     required this.onTryTap,
     required this.onBuyTap,
+    required this.onTap,
   });
 
   final GlassesItem item;
@@ -19,101 +20,103 @@ class FeaturedCard extends StatelessWidget {
   final VoidCallback onFavoriteTap;
   final VoidCallback onTryTap;
   final VoidCallback onBuyTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      elevation: 1,
+      shadowColor: Colors.black.withOpacity(0.08),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Image.network(
-                      item.thumbnailUrl ?? 'https://picsum.photos/seed/fallback_${item.id}/900/600',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.broken_image_outlined),
+        onTap: onTap,
+        child: SizedBox(
+          width: width,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Image.network(
+                          item.thumbnailUrl ?? 'https://picsum.photos/seed/fallback_${item.id}/900/600',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: colorScheme.surfaceContainerHighest,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_outlined),
+                          ),
+                        ),
                       ),
-                    ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton.filledTonal(
+                          onPressed: onFavoriteTap,
+                          icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+                        ),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: IconButton.filledTonal(
-                      onPressed: onFavoriteTap,
-                      icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(item.brand ?? 'Unknown brand', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Row(
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '\$${item.price.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      const Spacer(),
-                      const Icon(Icons.star, size: 18, color: Colors.amber),
-                      const SizedBox(width: 3),
-                      Text((item.rating ?? 0).toStringAsFixed(1)),
+                      const SizedBox(height: 2),
+                      Text(item.brand ?? 'Unknown brand', style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            '\$${item.price.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.star, size: 18, color: Colors.amber),
+                          const SizedBox(width: 3),
+                          Text((item.rating ?? 0).toStringAsFixed(1)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: onTryTap,
+                              child: const Text('Try'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: onBuyTap,
+                              icon: const Icon(Icons.shopping_cart_outlined),
+                              label: const Text('Buy'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: onTryTap,
-                          child: const Text('Try'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onBuyTap,
-                          icon: const Icon(Icons.shopping_cart_outlined),
-                          label: const Text('Buy'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

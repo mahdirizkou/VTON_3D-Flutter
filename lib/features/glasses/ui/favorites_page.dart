@@ -9,16 +9,19 @@ class FavoritesPage extends StatelessWidget {
     required this.favoriteIds,
     required this.onToggleFavorite,
     required this.onTryTap,
+    this.onItemTap,
   });
 
   final List<GlassesItem> allItems;
   final Set<int> favoriteIds;
   final ValueChanged<int> onToggleFavorite;
   final ValueChanged<GlassesItem> onTryTap;
+  final ValueChanged<GlassesItem>? onItemTap;
 
   @override
   Widget build(BuildContext context) {
-    final List<GlassesItem> favorites = allItems.where((item) => favoriteIds.contains(item.id)).toList();
+    final List<GlassesItem> favorites =
+        allItems.where((GlassesItem item) => favoriteIds.contains(item.id)).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Favorites')),
@@ -30,10 +33,11 @@ class FavoritesPage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               itemCount: favorites.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
+              itemBuilder: (BuildContext context, int index) {
                 final GlassesItem item = favorites[index];
                 return Card(
                   child: ListTile(
+                    onTap: onItemTap == null ? null : () => onItemTap!(item),
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
@@ -50,7 +54,7 @@ class FavoritesPage extends StatelessWidget {
                       ),
                     ),
                     title: Text(item.name),
-                    subtitle: Text('${item.brand ?? 'Unknown brand'} • \$${item.price.toStringAsFixed(2)}'),
+                    subtitle: Text('${item.brand ?? 'Unknown brand'} - \$${item.price.toStringAsFixed(2)}'),
                     trailing: Wrap(
                       spacing: 6,
                       children: [
