@@ -537,7 +537,7 @@ class _HomePageState extends State<HomePage> {
     const List<_NavItemData> items = <_NavItemData>[
       _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
       _NavItemData(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Try-On'),
-      _NavItemData(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explore'),
+      _NavItemData(icon: Icons.view_in_ar_outlined, activeIcon: Icons.view_in_ar, label: 'My Try'),
       _NavItemData(icon: Icons.favorite_outline, activeIcon: Icons.favorite, label: 'Favorites'),
       _NavItemData(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
     ];
