@@ -8,6 +8,7 @@ import '../../cart/data/cart_controller.dart';
 import '../data/glasses_api.dart';
 import '../models/glasses_item.dart';
 import 'try_on_page.dart';
+import 'widgets/glasses_model_viewer.dart';
 
 class ProductDetailsPage extends StatefulWidget {
   const ProductDetailsPage({
@@ -282,8 +283,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
   }
 
   Widget _buildHeaderImage(BuildContext context, GlassesItem item) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: AspectRatio(
@@ -291,14 +290,13 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              item.thumbnailUrl ?? 'https://picsum.photos/seed/details_${item.id}/1200/900',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: colorScheme.surfaceContainerHighest,
-                alignment: Alignment.center,
-                child: const Icon(Icons.broken_image_outlined, size: 44),
-              ),
+            GlassesModelViewer(
+              glbUrl: item.glbUrl,
+              thumbnailUrl: item.thumbnailUrl ?? 'https://picsum.photos/seed/details_${item.id}/1200/900',
+              alt: '${item.name} 3D model preview',
+              compact: false,
+              allowZoom: true,
+              autoRotate: false,
             ),
             DecoratedBox(
               decoration: BoxDecoration(
@@ -457,7 +455,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
   Widget _buildModelSection(BuildContext context, GlassesItem item) {
     final ThemeData theme = Theme.of(context);
-    final String glbUrl = item.glbUrl?.trim().isNotEmpty == true ? item.glbUrl!.trim() : 'No GLB URL provided';
+    final String? resolvedGlbUrl = item.glbUrl?.trim().isNotEmpty == true ? item.glbUrl!.trim() : null;
+    final String glbUrl = resolvedGlbUrl ?? 'No GLB URL provided';
 
     return _DetailSection(
       title: '3D Model',
@@ -465,7 +464,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'The GLB model URL is loaded from the backend detail response and ready for a future 3D viewer integration.',
+            'Inspect the glasses model directly from the backend GLB source. Drag to rotate and pinch to zoom when the viewer is available.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -487,12 +486,12 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             runSpacing: 10,
             children: [
               OutlinedButton.icon(
-                onPressed: item.glbUrl == null ? null : () => _copyGlbUrl(item.glbUrl!),
+                onPressed: resolvedGlbUrl == null ? null : () => _copyGlbUrl(resolvedGlbUrl),
                 icon: const Icon(Icons.copy_all_outlined),
                 label: const Text('Copy GLB URL'),
               ),
               TextButton.icon(
-                onPressed: item.glbUrl == null
+                onPressed: resolvedGlbUrl == null
                     ? null
                     : () {
                         showDialog<void>(
@@ -500,7 +499,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                           builder: (BuildContext dialogContext) {
                             return AlertDialog(
                               title: const Text('GLB Info'),
-                              content: SelectableText(item.glbUrl!),
+                              content: SelectableText(resolvedGlbUrl),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.of(dialogContext).pop(),

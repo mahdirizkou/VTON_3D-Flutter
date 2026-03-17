@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/glasses_item.dart';
+import 'glasses_model_viewer.dart';
 
 class FeaturedCard extends StatelessWidget {
   const FeaturedCard({
@@ -45,13 +46,45 @@ class FeaturedCard extends StatelessWidget {
                   child: Stack(
                     children: [
                       Positioned.fill(
-                        child: Image.network(
-                          item.thumbnailUrl ?? 'https://picsum.photos/seed/fallback_${item.id}/900/600',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: colorScheme.surfaceContainerHighest,
-                            alignment: Alignment.center,
-                            child: const Icon(Icons.broken_image_outlined),
+                        child: GlassesModelViewer(
+                          glbUrl: item.glbUrl,
+                          thumbnailUrl: item.thumbnailUrl ?? 'https://picsum.photos/seed/fallback_${item.id}/900/600',
+                          alt: '${item.name} 3D preview',
+                          compact: true,
+                          allowZoom: false,
+                          autoRotate: false,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
+                        ),
+                      ),
+                      Positioned(
+                        left: 10,
+                        top: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.55),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(
+                                item.glbUrl?.trim().isNotEmpty == true
+                                    ? Icons.view_in_ar_outlined
+                                    : Icons.image_outlined,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                item.glbUrl?.trim().isNotEmpty == true ? '3D Preview' : 'Image',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

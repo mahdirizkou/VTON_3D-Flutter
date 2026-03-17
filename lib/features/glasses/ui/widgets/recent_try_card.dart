@@ -34,15 +34,51 @@ class RecentTryCard extends StatelessWidget {
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      item.thumbnailUrl ?? 'https://picsum.photos/seed/recent_${item.id}/900/600',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.broken_image_outlined),
-                      ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        Image.network(
+                          item.thumbnailUrl ?? 'https://picsum.photos/seed/recent_${item.id}/900/600',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_outlined),
+                          ),
+                        ),
+                        if (item.glbUrl?.trim().isNotEmpty == true)
+                          Positioned(
+                            left: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.view_in_ar_outlined,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '3D',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -53,6 +89,13 @@ class RecentTryCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
+                if (item.glbUrl?.trim().isNotEmpty == true)
+                  Text(
+                    'Full 3D preview in details',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
