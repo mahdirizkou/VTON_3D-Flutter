@@ -119,10 +119,103 @@ class _ExplorePageState extends State<ExplorePage>
   }
 
   // ── _pickImage original ────────────────────────────────────────
-  Future<void> _pickImage(_UploadSlotType type) async {
+  Future<void> _showImageSourceSheet(_UploadSlotType type) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _C.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: _C.cardBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 18),
+                    decoration: BoxDecoration(
+                      color: _C.cardBorder,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Add image',
+                        style: TextStyle(
+                          color: _C.textPrim,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Choose how you want to provide this view.',
+                        style: TextStyle(
+                          color: _C.textSec,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _ImageSourceOption(
+                    icon: Icons.photo_camera_outlined,
+                    title: 'Take a Photo',
+                    subtitle: 'Open the camera and capture a new image.',
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _pickImage(type, ImageSource.camera);
+                    },
+                  ),
+                  _ImageSourceOption(
+                    icon: Icons.photo_library_outlined,
+                    title: 'Choose from Gallery',
+                    subtitle: 'Select an existing image from your library.',
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _pickImage(type, ImageSource.gallery);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(_UploadSlotType type, ImageSource source) async {
     try {
       final XFile? picked = await _imagePicker.pickImage(
-        source: ImageSource.gallery, imageQuality: 92);
+        source: source,
+        imageQuality: 92,
+      );
       if (picked == null || !mounted) return;
       setState(() {
         switch (type) {
@@ -135,8 +228,10 @@ class _ExplorePageState extends State<ExplorePage>
       });
     } catch (_) {
       if (!mounted) return;
+      final String sourceLabel =
+          source == ImageSource.camera ? 'camera' : 'gallery';
       ScaffoldMessenger.of(context).showSnackBar(
-        _styledSnack('Could not pick image from gallery.',
+        _styledSnack('Could not pick image from $sourceLabel.',
             icon: Icons.warning_amber_rounded, color: _C.error));
     }
   }
@@ -346,7 +441,7 @@ class _ExplorePageState extends State<ExplorePage>
                 leftImage:  _leftImage,
                 backImage:  _backImage,
                 rightImage: _rightImage,
-                onPick:        _pickImage,
+                onPick:        _showImageSourceSheet,
                 onRemove:      _removeImage,
                 onGenerate:    _generateModel,
                 canGenerate:   _canGenerate,
@@ -668,11 +763,93 @@ class _UploadPanel extends StatelessWidget {
 }
 
 // ── Upload slot ───────────────────────────────────────────────────
+class _ImageSourceOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Future<void> Function() onTap;
+
+  const _ImageSourceOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Material(
+        color: _C.deepNavy,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _C.cardBorder),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _C.electric.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _C.electric.withOpacity(0.28)),
+                  ),
+                  child: Icon(icon, color: _C.electric, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: _C.textPrim,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: _C.textSec,
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _C.chromeDim,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _UploadSlot extends StatefulWidget {
   final String label;
   final bool required;
   final XFile? file;
-  final VoidCallback onPick, onRemove;
+  final Future<void> Function() onPick;
+  final VoidCallback onRemove;
 
   const _UploadSlot({
     required this.label, this.required = false,
