@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vton_auth/core/services/camera_kit_service.dart';
 
 import '../../cart/data/cart_controller.dart';
 import '../models/glasses_item.dart';
@@ -140,14 +141,21 @@ class _TryOnPageState extends State<TryOnPage>
 
                     // Bouton Open Camera (original)
                     _GlowButton(
-                      label: 'Open Camera',
+                      label: 'Try On Glasses (AR)',
                       icon: Icons.camera_alt_outlined,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          _styledSnack('Camera placeholder activated.',
-                              icon: Icons.camera_alt_outlined,
-                              color: _C.electric),
-                        );
+                      onTap: () async {
+                        try {
+                          await CameraKitService.openCameraKit();
+                        } catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            _styledSnack(
+                              error.toString(),
+                              icon: Icons.error_outline,
+                              color: _C.warning,
+                            ),
+                          );
+                        }
                       },
                     ),
                     const SizedBox(height: 10),
