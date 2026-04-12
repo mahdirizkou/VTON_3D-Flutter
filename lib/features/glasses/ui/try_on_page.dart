@@ -24,7 +24,7 @@ class _C {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRY-ON PAGE  —  logique backend 100 % originale
+// TRY-ON PAGE
 // ═══════════════════════════════════════════════════════════════════
 class TryOnPage extends StatefulWidget {
   const TryOnPage({super.key, required this.item});
@@ -46,17 +46,24 @@ class _TryOnPageState extends State<TryOnPage>
     _entryCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _fadeAnim  = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
+    _slideAnim = Tween<Offset>(
+            begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entryCtrl, curve: Curves.easeOutCubic));
     _entryCtrl.forward();
   }
 
   @override
-  void dispose() { _entryCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _entryCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final GlassesItem item = widget.item;
+    final bool hasLens =
+        item.snapLensId != null && item.snapLensGroupId != null;
 
     return Scaffold(
       backgroundColor: _C.obsidian,
@@ -69,52 +76,85 @@ class _TryOnPageState extends State<TryOnPage>
           child: Container(
             margin: const EdgeInsets.only(left: 12),
             decoration: BoxDecoration(
-              color: _C.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _C.border, width: 1)),
+                color: _C.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _C.border, width: 1)),
             child: const Icon(Icons.arrow_back_ios_new_rounded,
                 color: _C.chrome, size: 16),
           ),
         ),
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('TRY-ON', style: TextStyle(fontSize: 15,
-              fontWeight: FontWeight.w900, color: _C.textPrim, letterSpacing: 3)),
-          Text('3D VIRTUAL', style: TextStyle(
-              fontSize: 9, color: _C.electric,
-              letterSpacing: 2.5, fontWeight: FontWeight.w600)),
-        ]),
+        title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('TRY-ON',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: _C.textPrim,
+                      letterSpacing: 3)),
+              Text('3D VIRTUAL',
+                  style: TextStyle(
+                      fontSize: 9,
+                      color: _C.electric,
+                      letterSpacing: 2.5,
+                      fontWeight: FontWeight.w600)),
+            ]),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 14),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: _C.electric.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _C.electric.withOpacity(0.4), width: 1),
+              border: Border.all(
+                  color: _C.electric.withOpacity(0.4), width: 1),
             ),
             child: Row(children: [
-              Container(width: 6, height: 6, decoration: const BoxDecoration(
-                  shape: BoxShape.circle, color: _C.success)),
+              Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: hasLens ? _C.success : _C.chromeDim)),
               const SizedBox(width: 5),
-              const Text('AR LIVE', style: TextStyle(fontSize: 9,
-                  color: _C.electric, fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5)),
+              Text(
+                hasLens ? 'AR LIVE' : 'AR OFF',
+                style: TextStyle(
+                    fontSize: 9,
+                    color: hasLens ? _C.electric : _C.chromeDim,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5),
+              ),
             ]),
           ),
         ],
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [
-              Colors.transparent, _C.electric, Colors.transparent])))),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(
+                height: 1,
+                decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                  Colors.transparent,
+                  _C.electric,
+                  Colors.transparent,
+                ])))),
       ),
 
       body: Stack(children: [
-        Positioned(top: -60, right: -60,
-          child: Container(width: 220, height: 220,
-            decoration: BoxDecoration(shape: BoxShape.circle,
+        Positioned(
+          top: -60,
+          right: -60,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
               gradient: RadialGradient(colors: [
-                _C.electric.withOpacity(0.08), Colors.transparent,
-              ])),
+                _C.electric.withOpacity(0.08),
+                Colors.transparent,
+              ]),
+            ),
           ),
         ),
         SafeArea(
@@ -131,21 +171,48 @@ class _TryOnPageState extends State<TryOnPage>
                     _ImageViewer(item: item),
                     const SizedBox(height: 14),
 
-                    // Infos produit
+                    // Product info
                     _ProductInfoRow(item: item),
                     const SizedBox(height: 10),
+
+                    // AR status banner — shown only when no lens
+                    if (!hasLens) ...[
+                      _ArUnavailableBanner(itemName: item.name),
+                      const SizedBox(height: 10),
+                    ],
 
                     // Payload 3D
                     Expanded(child: _PayloadCard(item: item)),
                     const SizedBox(height: 14),
 
-                    // Bouton Open Camera (original)
+                    // Try On AR button
                     _GlowButton(
-                      label: 'Try On Glasses (AR)',
-                      icon: Icons.camera_alt_outlined,
+                      label: hasLens
+                          ? 'Try On Glasses (AR)'
+                          : 'AR Not Available',
+                      icon: hasLens
+                          ? Icons.camera_alt_outlined
+                          : Icons.videocam_off_outlined,
+                      enabled: hasLens,
                       onTap: () async {
+                        // Block if no lens configured
+                        if (!hasLens) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            _styledSnack(
+                              'AR try-on is not configured for '
+                              '${item.name} yet.',
+                              icon: Icons.info_outline,
+                              color: _C.chromeDim,
+                            ),
+                          );
+                          return;
+                        }
+
                         try {
-                          await CameraKitService.openCameraKit();
+                          await CameraKitService.openCameraKit(
+                            lensGroupId: item.snapLensGroupId!,
+                            lensId: item.snapLensId!,
+                          );
                         } catch (error) {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -160,12 +227,13 @@ class _TryOnPageState extends State<TryOnPage>
                     ),
                     const SizedBox(height: 10),
 
-                    // Bouton Add to Cart (original)
+                    // Add to Cart button
                     _OutlineGlowButton(
                       label: 'Add to Cart',
                       icon: Icons.shopping_cart_outlined,
                       onTap: () async {
-                        await CartController.instance.addFromGlasses(item);
+                        await CartController.instance
+                            .addFromGlasses(item);
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           _styledSnack('Added to cart',
@@ -178,6 +246,37 @@ class _TryOnPageState extends State<TryOnPage>
                 ),
               ),
             ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── AR Unavailable Banner ─────────────────────────────────────────
+class _ArUnavailableBanner extends StatelessWidget {
+  final String itemName;
+  const _ArUnavailableBanner({required this.itemName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _C.chromeDim.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _C.chromeDim.withOpacity(0.25), width: 1),
+      ),
+      child: Row(children: [
+        const Icon(Icons.info_outline, color: _C.chromeDim, size: 16),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'AR try-on is not yet configured for $itemName.',
+            style: const TextStyle(
+                fontSize: 12,
+                color: _C.chromeDim,
+                fontWeight: FontWeight.w500),
           ),
         ),
       ]),
@@ -198,10 +297,14 @@ class _ImageViewer extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _C.cardBorder, width: 1),
         boxShadow: [
-          BoxShadow(color: _C.electric.withOpacity(0.10),
-              blurRadius: 24, offset: const Offset(0, 8)),
-          BoxShadow(color: Colors.black.withOpacity(0.4),
-              blurRadius: 20, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: _C.electric.withOpacity(0.10),
+              blurRadius: 24,
+              offset: const Offset(0, 8)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: ClipRRect(
@@ -210,51 +313,73 @@ class _ImageViewer extends StatelessWidget {
           Image.network(
             item.thumbnailUrl ??
                 'https://picsum.photos/seed/tryon_${item.id}/900/600',
-            height: 240, width: double.infinity, fit: BoxFit.cover,
+            height: 240,
+            width: double.infinity,
+            fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
-              height: 240, color: _C.surface,
+              height: 240,
+              color: _C.surface,
               alignment: Alignment.center,
-              child: Column(mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.broken_image_outlined,
-                      color: _C.chromeDim, size: 36),
-                  SizedBox(height: 8),
-                  Text('Preview unavailable',
-                      style: TextStyle(color: _C.textSec, fontSize: 12)),
-                ]),
+              child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.broken_image_outlined,
+                        color: _C.chromeDim, size: 36),
+                    SizedBox(height: 8),
+                    Text('Preview unavailable',
+                        style:
+                            TextStyle(color: _C.textSec, fontSize: 12)),
+                  ]),
             ),
           ),
-          // Gradient bas
-          Positioned(bottom: 0, left: 0, right: 0,
-            child: Container(height: 60,
-              decoration: const BoxDecoration(gradient: LinearGradient(
-                begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                colors: [Color(0xCC080C12), Colors.transparent])))),
+          // Bottom gradient
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+                height: 60,
+                decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                      Color(0xCC080C12),
+                      Colors.transparent,
+                    ]))),
+          ),
           // Rating badge
           if (item.rating != null)
-            Positioned(top: 10, right: 10,
+            Positioned(
+              top: 10,
+              right: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _C.surface.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: _C.warning.withOpacity(0.5), width: 1)),
+                    color: _C.surface.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _C.warning.withOpacity(0.5), width: 1)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.star_rounded, color: _C.warning, size: 12),
+                  const Icon(Icons.star_rounded,
+                      color: _C.warning, size: 12),
                   const SizedBox(width: 3),
                   Text(item.rating!.toStringAsFixed(1),
-                      style: const TextStyle(color: _C.textPrim,
-                          fontSize: 11, fontWeight: FontWeight.w700)),
+                      style: const TextStyle(
+                          color: _C.textPrim,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
                 ]),
-              )),
+              ),
+            ),
         ]),
       ),
     );
   }
 }
 
-// ── Infos produit ─────────────────────────────────────────────────
+// ── Product info row ──────────────────────────────────────────────
 class _ProductInfoRow extends StatelessWidget {
   final GlassesItem item;
   const _ProductInfoRow({required this.item});
@@ -262,40 +387,54 @@ class _ProductInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: _C.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _C.cardBorder, width: 1),
       ),
       child: Row(children: [
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(item.name, style: const TextStyle(fontSize: 15,
-              fontWeight: FontWeight.w800, color: _C.textPrim)),
-          const SizedBox(height: 2),
-          Text(item.brand ?? 'Unknown brand',
-              style: const TextStyle(fontSize: 12, color: _C.textSec)),
-        ])),
+        Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(item.name,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _C.textPrim)),
+              const SizedBox(height: 2),
+              Text(item.brand ?? 'Unknown brand',
+                  style: const TextStyle(
+                      fontSize: 12, color: _C.textSec)),
+            ])),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
                 colors: [Color(0xFF0078CC), _C.electric]),
             borderRadius: BorderRadius.circular(10),
-            boxShadow: [BoxShadow(color: _C.electric.withOpacity(0.25),
-                blurRadius: 10, offset: const Offset(0, 3))],
+            boxShadow: [
+              BoxShadow(
+                  color: _C.electric.withOpacity(0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3))
+            ],
           ),
           child: Text('\$${item.price.toStringAsFixed(2)}',
-              style: const TextStyle(color: Colors.white,
-                  fontSize: 14, fontWeight: FontWeight.w800)),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800)),
         ),
       ]),
     );
   }
 }
 
-// ── Payload 3D ────────────────────────────────────────────────────
+// ── Payload 3D card ───────────────────────────────────────────────
 class _PayloadCard extends StatelessWidget {
   final GlassesItem item;
   const _PayloadCard({required this.item});
@@ -307,51 +446,81 @@ class _PayloadCard extends StatelessWidget {
         color: _C.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _C.cardBorder, width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3),
-            blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Column(children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 11),
           decoration: const BoxDecoration(
-            color: _C.card,
-            borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16), topRight: Radius.circular(16)),
-            border: Border(bottom: BorderSide(color: _C.cardBorder))),
+              color: _C.card,
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16)),
+              border:
+                  Border(bottom: BorderSide(color: _C.cardBorder))),
           child: Row(children: [
-            Container(width: 3, height: 14,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [_C.electric, Color(0xFF0070B8)],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 3,
+                height: 14,
+                decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [_C.electric, Color(0xFF0070B8)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter),
+                    borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
-            const Text('Try-On Payload', style: TextStyle(fontSize: 13,
-                fontWeight: FontWeight.w800, color: _C.textPrim)),
+            const Text('Try-On Payload',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: _C.textPrim)),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: _C.success.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _C.success.withOpacity(0.3))),
-              child: const Text('3D DATA', style: TextStyle(fontSize: 9,
-                  color: _C.success, fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5)),
+                  color: _C.success.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: _C.success.withOpacity(0.3))),
+              child: const Text('3D DATA',
+                  style: TextStyle(
+                      fontSize: 9,
+                      color: _C.success,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5)),
             ),
           ]),
         ),
-        Expanded(child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        Expanded(
+            child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 10),
           child: Column(children: [
-            _DataRow('glb_url',           item.glbUrl ?? '-'),
-            _DataRow('scale',             item.scale?.toStringAsFixed(3) ?? '-'),
-            _DataRow('position_offset',   item.positionOffset != null
-                ? item.positionOffset!.toInlineString() : '-'),
-            _DataRow('rotation_offset',   item.rotationOffset != null
-                ? item.rotationOffset!.toInlineString() : '-'),
-            _DataRow('anchor',            item.anchor ?? '-'),
-            _DataRow('version',           item.version ?? '-'),
+            _DataRow('glb_url', item.glbUrl ?? '-'),
+            _DataRow('scale',
+                item.scale?.toStringAsFixed(3) ?? '-'),
+            _DataRow(
+                'position_offset',
+                item.positionOffset != null
+                    ? item.positionOffset!.toInlineString()
+                    : '-'),
+            _DataRow(
+                'rotation_offset',
+                item.rotationOffset != null
+                    ? item.rotationOffset!.toInlineString()
+                    : '-'),
+            _DataRow('anchor', item.anchor ?? '-'),
+            _DataRow('version', item.version ?? '-'),
+            _DataRow('snap_lens_id', item.snapLensId ?? '-'),
+            _DataRow(
+                'snap_group_id', item.snapLensGroupId ?? '-'),
           ]),
         )),
       ]),
@@ -367,94 +536,125 @@ class _DataRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 120,
-          child: Text(key0, style: const TextStyle(fontSize: 11,
-              color: _C.electric, fontWeight: FontWeight.w600,
-              letterSpacing: 0.5))),
-        Expanded(child: Text(value, style: const TextStyle(
-            fontSize: 11, color: _C.textSec))),
-      ]),
+      child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+                width: 120,
+                child: Text(key0,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: _C.electric,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5))),
+            Expanded(
+                child: Text(value,
+                    style: const TextStyle(
+                        fontSize: 11, color: _C.textSec))),
+          ]),
     );
   }
 }
 
-// ── Boutons ───────────────────────────────────────────────────────
+// ── Glow Button ───────────────────────────────────────────────────
 class _GlowButton extends StatefulWidget {
-  final String label; final IconData icon; final VoidCallback onTap;
-  const _GlowButton({required this.label, required this.icon,
-      required this.onTap});
-  @override State<_GlowButton> createState() => _GlowButtonState();
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  const _GlowButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  State<_GlowButton> createState() => _GlowButtonState();
 }
+
 class _GlowButtonState extends State<_GlowButton> {
   bool _p = false;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _p = true),
-      onTapUp: (_) => setState(() => _p = false),
-      onTapCancel: () => setState(() => _p = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(scale: _p ? 0.975 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: Container(height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [Color(0xFF0078CC), _C.electric, Color(0xFF00C8FF)],
-                begin: Alignment.centerLeft, end: Alignment.centerRight),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(
-                color: _C.electric.withOpacity(_p ? 0.2 : 0.38),
-                blurRadius: _p ? 10 : 22, offset: const Offset(0, 5))]),
-          child: Stack(alignment: Alignment.center, children: [
-            Positioned(top: 0, left: 16, right: 16,
-              child: Container(height: 1, decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  Colors.transparent, Colors.white24, Colors.transparent])))),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(widget.icon, color: Colors.white, size: 18),
-              const SizedBox(width: 10),
-              Text(widget.label, style: const TextStyle(color: Colors.white,
-                  fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-            ]),
-          ]),
-        ),
-      ),
-    );
-  }
-}
 
-class _OutlineGlowButton extends StatefulWidget {
-  final String label; final IconData icon; final VoidCallback onTap;
-  const _OutlineGlowButton({required this.label, required this.icon,
-      required this.onTap});
-  @override State<_OutlineGlowButton> createState() => _OutlineGlowButtonState();
-}
-class _OutlineGlowButtonState extends State<_OutlineGlowButton> {
-  bool _p = false;
   @override
   Widget build(BuildContext context) {
+    final bool active = widget.enabled;
+
     return GestureDetector(
-      onTapDown: (_) => setState(() => _p = true),
-      onTapUp: (_) => setState(() => _p = false),
-      onTapCancel: () => setState(() => _p = false),
+      onTapDown: active ? (_) => setState(() => _p = true) : null,
+      onTapUp: active ? (_) => setState(() => _p = false) : null,
+      onTapCancel:
+          active ? () => setState(() => _p = false) : null,
       onTap: widget.onTap,
-      child: AnimatedScale(scale: _p ? 0.975 : 1.0,
+      child: AnimatedScale(
+        scale: _p ? 0.975 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: AnimatedContainer(duration: const Duration(milliseconds: 200),
+        child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: _p ? _C.electric.withOpacity(0.08) : _C.deepNavy,
+            gradient: active
+                ? const LinearGradient(
+                    colors: [
+                      Color(0xFF0078CC),
+                      _C.electric,
+                      Color(0xFF00C8FF),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  )
+                : LinearGradient(colors: [
+                    _C.chromeDim.withOpacity(0.15),
+                    _C.chromeDim.withOpacity(0.10),
+                  ]),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: _p ? _C.electric.withOpacity(0.7) : _C.cardBorder,
-                width: 1.5)),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(widget.icon, color: _p ? _C.electric : _C.chrome, size: 18),
-            const SizedBox(width: 10),
-            Text(widget.label, style: TextStyle(
-                color: _p ? _C.electric : _C.chrome, fontSize: 13,
-                fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+            border: active
+                ? null
+                : Border.all(
+                    color: _C.chromeDim.withOpacity(0.25),
+                    width: 1),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                        color: _C.electric
+                            .withOpacity(_p ? 0.2 : 0.38),
+                        blurRadius: _p ? 10 : 22,
+                        offset: const Offset(0, 5))
+                  ]
+                : [],
+          ),
+          child: Stack(alignment: Alignment.center, children: [
+            if (active)
+              Positioned(
+                top: 0,
+                left: 16,
+                right: 16,
+                child: Container(
+                    height: 1,
+                    decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                      Colors.transparent,
+                      Colors.white24,
+                      Colors.transparent,
+                    ]))),
+              ),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(widget.icon,
+                      color:
+                          active ? Colors.white : _C.chromeDim,
+                      size: 18),
+                  const SizedBox(width: 10),
+                  Text(widget.label,
+                      style: TextStyle(
+                          color: active
+                              ? Colors.white
+                              : _C.chromeDim,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5)),
+                ]),
           ]),
         ),
       ),
@@ -462,14 +662,80 @@ class _OutlineGlowButtonState extends State<_OutlineGlowButton> {
   }
 }
 
-// ── SnackBar stylisé ──────────────────────────────────────────────
+// ── Outline Glow Button ───────────────────────────────────────────
+class _OutlineGlowButton extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _OutlineGlowButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  State<_OutlineGlowButton> createState() =>
+      _OutlineGlowButtonState();
+}
+
+class _OutlineGlowButtonState extends State<_OutlineGlowButton> {
+  bool _p = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _p = true),
+      onTapUp: (_) => setState(() => _p = false),
+      onTapCancel: () => setState(() => _p = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _p ? 0.975 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 52,
+          decoration: BoxDecoration(
+              color: _p
+                  ? _C.electric.withOpacity(0.08)
+                  : _C.deepNavy,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: _p
+                      ? _C.electric.withOpacity(0.7)
+                      : _C.cardBorder,
+                  width: 1.5)),
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(widget.icon,
+                    color: _p ? _C.electric : _C.chrome,
+                    size: 18),
+                const SizedBox(width: 10),
+                Text(widget.label,
+                    style: TextStyle(
+                        color: _p ? _C.electric : _C.chrome,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2)),
+              ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Styled SnackBar ───────────────────────────────────────────────
 SnackBar _styledSnack(String msg,
     {required IconData icon, Color color = _C.electric}) {
   return SnackBar(
     content: Row(children: [
-      Icon(icon, color: color, size: 18), const SizedBox(width: 10),
-      Expanded(child: Text(msg, style: const TextStyle(
-          color: _C.textPrim, fontSize: 13))),
+      Icon(icon, color: color, size: 18),
+      const SizedBox(width: 10),
+      Expanded(
+          child: Text(msg,
+              style:
+                  const TextStyle(color: _C.textPrim, fontSize: 13))),
     ]),
     backgroundColor: _C.surface,
     behavior: SnackBarBehavior.floating,

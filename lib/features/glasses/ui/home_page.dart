@@ -55,6 +55,9 @@ class _HomePageState extends State<HomePage> {
   Future<GlassesItem>? _tryOnFuture;
   int? _tryOnItemId;
 
+  // ── FIX: track the explicitly selected item separately ──
+  GlassesItem? _selectedTryOnItem;
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +82,13 @@ class _HomePageState extends State<HomePage> {
 
   List<GlassesItem> get _recentlyTried => _items.take(6).toList();
 
+  // ── FIX: _primaryTryOnItem now respects the user's explicit selection ──
   GlassesItem? get _primaryTryOnItem {
+    // If user explicitly selected an item, use it
+    if (_selectedTryOnItem != null) {
+      return _selectedTryOnItem;
+    }
+    // Default: first filtered item
     if (_filteredItems.isNotEmpty) {
       return _filteredItems.first;
     }
@@ -106,8 +115,8 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       setState(() {
         _items = loaded;
-        final GlassesItem? selected = _primaryTryOnItem;
-        if (selected == null || _tryOnItemId != selected.id) {
+        // Reset selection only if no item was explicitly selected
+        if (_selectedTryOnItem == null) {
           _tryOnFuture = null;
           _tryOnItemId = null;
         }
@@ -119,7 +128,8 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load glasses. Please check your connection and try again.';
+        _error =
+            'Could not load glasses. Please check your connection and try again.';
       });
     } finally {
       if (!mounted) return;
@@ -177,12 +187,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ── FIX: always load the specific item passed, never override with first ──
+  void _selectItemForTryOn(GlassesItem item) {
+    setState(() {
+      _selectedIndex = 1;
+      _selectedTryOnItem = item;
+      _tryOnItemId = item.id;
+      _tryOnFuture = _loadSpecificTryOnItem(item);
+    });
+  }
+
   Future<GlassesItem> _prepareTryOnItem() async {
     final GlassesItem? selected = _primaryTryOnItem;
     if (selected == null) {
       throw Exception('No glasses available yet.');
     }
-
     try {
       return await _glassesApi.fetchTryOnPayload(selected);
     } on ApiUnauthorizedException {
@@ -199,6 +218,7 @@ class _HomePageState extends State<HomePage> {
       _tryOnItemId = null;
       return;
     }
+    // ── FIX: only reinitialize if item actually changed ──
     if (_tryOnFuture != null && _tryOnItemId == selected.id) {
       return;
     }
@@ -229,7 +249,6 @@ class _HomePageState extends State<HomePage> {
       });
       return;
     }
-
     setState(() {
       _selectedIndex = index;
     });
@@ -247,11 +266,7 @@ class _HomePageState extends State<HomePage> {
           favoriteIds: _favorites,
           onToggleFavorite: _toggleFavorite,
           onTryTap: (GlassesItem item) {
-            setState(() {
-              _selectedIndex = 1;
-              _tryOnItemId = item.id;
-              _tryOnFuture = _loadSpecificTryOnItem(item);
-            });
+            _selectItemForTryOn(item);
           },
         ),
         const ProfilePage(),
@@ -272,7 +287,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHomeTab() {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final double width = MediaQuery.of(context).size.width;
-    final double featuredCardWidth = width < 380 ? width * 0.72 : width * 0.62;
+    final double featuredCardWidth =
+        width < 380 ? width * 0.72 : width * 0.62;
 
     return Scaffold(
       appBar: AppBar(
@@ -336,17 +352,20 @@ class _HomePageState extends State<HomePage> {
                         onRefresh: _fetchGlasses,
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 10, 16, 24),
                           children: <Widget>[
                             HeroCard(
-                              onStartTryOn: () => _onDestinationSelected(1),
+                              onStartTryOn: () =>
+                                  _onDestinationSelected(1),
                             ),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _searchController,
                               textInputAction: TextInputAction.search,
                               decoration: InputDecoration(
-                                hintText: 'Search by frame, brand, style...',
+                                hintText:
+                                    'Search by frame, brand, style...',
                                 prefixIcon: const Icon(Icons.search),
                                 suffixIcon: _searchQuery.isNotEmpty
                                     ? IconButton(
@@ -357,12 +376,15 @@ class _HomePageState extends State<HomePage> {
                                             _searchQuery = '';
                                             _tryOnFuture = null;
                                             _tryOnItemId = null;
+                                            _selectedTryOnItem = null;
                                           });
                                         },
                                       )
                                     : null,
                                 filled: true,
-                                fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.35),
+                                fillColor: colorScheme
+                                    .surfaceContainerHighest
+                                    .withOpacity(0.35),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   borderSide: BorderSide.none,
@@ -373,6 +395,7 @@ class _HomePageState extends State<HomePage> {
                                   _searchQuery = value;
                                   _tryOnFuture = null;
                                   _tryOnItemId = null;
+                                  _selectedTryOnItem = null;
                                 });
                               },
                               onChanged: (String value) {
@@ -380,6 +403,7 @@ class _HomePageState extends State<HomePage> {
                                   _searchQuery = value;
                                   _tryOnFuture = null;
                                   _tryOnItemId = null;
+                                  _selectedTryOnItem = null;
                                 });
                               },
                             ),
@@ -389,10 +413,14 @@ class _HomePageState extends State<HomePage> {
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _categories.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                                itemBuilder: (BuildContext context, int index) {
-                                  final String category = _categories[index];
-                                  final bool selected = category == _selectedCategory;
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder:
+                                    (BuildContext context, int index) {
+                                  final String category =
+                                      _categories[index];
+                                  final bool selected =
+                                      category == _selectedCategory;
                                   return ChoiceChip(
                                     selected: selected,
                                     label: Text(category),
@@ -401,6 +429,7 @@ class _HomePageState extends State<HomePage> {
                                         _selectedCategory = category;
                                         _tryOnFuture = null;
                                         _tryOnItemId = null;
+                                        _selectedTryOnItem = null;
                                       });
                                     },
                                   );
@@ -410,7 +439,8 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 20),
                             SectionHeader(
                               title: 'Featured Glasses',
-                              trailing: '${_filteredItems.length} items',
+                              trailing:
+                                  '${_filteredItems.length} items',
                             ),
                             const SizedBox(height: 10),
                             SizedBox(
@@ -418,54 +448,58 @@ class _HomePageState extends State<HomePage> {
                               child: _filteredItems.isEmpty
                                   ? const EmptyState(
                                       title: 'No glasses found',
-                                      subtitle: 'Try another search or category.',
+                                      subtitle:
+                                          'Try another search or category.',
                                     )
                                   : ListView.separated(
                                       scrollDirection: Axis.horizontal,
                                       itemCount: _filteredItems.length,
-                                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                                      itemBuilder: (BuildContext context, int index) {
-                                        final GlassesItem item = _filteredItems[index];
-                                        final bool isFavorite = _favorites.contains(item.id);
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 12),
+                                      itemBuilder: (BuildContext context,
+                                          int index) {
+                                        final GlassesItem item =
+                                            _filteredItems[index];
+                                        final bool isFavorite =
+                                            _favorites.contains(item.id);
                                         return FeaturedCard(
                                           item: item,
                                           width: featuredCardWidth,
                                           isFavorite: isFavorite,
-                                          onFavoriteTap: () => _toggleFavorite(item.id),
-                                          onTryTap: () {
-                                            setState(() {
-                                              _selectedIndex = 1;
-                                              _tryOnItemId = item.id;
-                                              _tryOnFuture = _loadSpecificTryOnItem(item);
-                                            });
-                                          },
+                                          onFavoriteTap: () =>
+                                              _toggleFavorite(item.id),
+                                          // ── FIX: use _selectItemForTryOn ──
+                                          onTryTap: () =>
+                                              _selectItemForTryOn(item),
                                           onBuyTap: () => _buyNow(item),
-                                          onTap: () => _openProductDetails(item),
+                                          onTap: () =>
+                                              _openProductDetails(item),
                                         );
                                       },
                                     ),
                             ),
                             const SizedBox(height: 20),
-                            const SectionHeader(title: 'Recently Tried'),
+                            const SectionHeader(
+                                title: 'Recently Tried'),
                             const SizedBox(height: 10),
                             SizedBox(
                               height: 160,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _recentlyTried.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                                itemBuilder: (BuildContext context, int index) {
-                                  final GlassesItem item = _recentlyTried[index];
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 12),
+                                itemBuilder: (BuildContext context,
+                                    int index) {
+                                  final GlassesItem item =
+                                      _recentlyTried[index];
                                   return RecentTryCard(
                                     item: item,
-                                    onTryAgain: () {
-                                      setState(() {
-                                        _selectedIndex = 1;
-                                        _tryOnItemId = item.id;
-                                        _tryOnFuture = _loadSpecificTryOnItem(item);
-                                      });
-                                    },
-                                    onTap: () => _openProductDetails(item),
+                                    // ── FIX: use _selectItemForTryOn ──
+                                    onTryAgain: () =>
+                                        _selectItemForTryOn(item),
+                                    onTap: () =>
+                                        _openProductDetails(item),
                                   );
                                 },
                               ),
@@ -496,9 +530,11 @@ class _HomePageState extends State<HomePage> {
     }
 
     _ensureTryOnPageReady();
+
     return FutureBuilder<GlassesItem>(
       future: _tryOnFuture,
-      builder: (BuildContext context, AsyncSnapshot<GlassesItem> snapshot) {
+      builder:
+          (BuildContext context, AsyncSnapshot<GlassesItem> snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -518,7 +554,6 @@ class _HomePageState extends State<HomePage> {
               ),
             );
           }
-
           return Scaffold(
             appBar: AppBar(title: const Text('Try-On')),
             body: ErrorState(
@@ -528,18 +563,35 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-        return TryOnPage(item: snapshot.data ?? selected);
+        // ── FIX: use snapshot data which contains the correct item ──
+        final GlassesItem resolvedItem = snapshot.data ?? selected;
+        return TryOnPage(item: resolvedItem);
       },
     );
   }
 
   Widget _buildBottomNav() {
     const List<_NavItemData> items = <_NavItemData>[
-      _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
-      _NavItemData(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Try-On'),
-      _NavItemData(icon: Icons.view_in_ar_outlined, activeIcon: Icons.view_in_ar, label: 'My Try'),
-      _NavItemData(icon: Icons.favorite_outline, activeIcon: Icons.favorite, label: 'Favorites'),
-      _NavItemData(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profile'),
+      _NavItemData(
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          label: 'Home'),
+      _NavItemData(
+          icon: Icons.videocam_outlined,
+          activeIcon: Icons.videocam_rounded,
+          label: 'Try-On'),
+      _NavItemData(
+          icon: Icons.view_in_ar_outlined,
+          activeIcon: Icons.view_in_ar,
+          label: 'My Try'),
+      _NavItemData(
+          icon: Icons.favorite_outline,
+          activeIcon: Icons.favorite,
+          label: 'Favorites'),
+      _NavItemData(
+          icon: Icons.person_outline,
+          activeIcon: Icons.person,
+          label: 'Profile'),
     ];
 
     return SafeArea(
@@ -547,7 +599,8 @@ class _HomePageState extends State<HomePage> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
@@ -563,7 +616,8 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           child: Row(
-            children: List<Widget>.generate(items.length, (int index) {
+            children:
+                List<Widget>.generate(items.length, (int index) {
               final _NavItemData item = items[index];
               final bool selected = index == _selectedIndex;
               return Expanded(
@@ -621,9 +675,12 @@ class _BottomNavItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? colorScheme.primaryContainer : Colors.transparent,
+          color: selected
+              ? colorScheme.primaryContainer
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -631,7 +688,9 @@ class _BottomNavItem extends StatelessWidget {
           children: <Widget>[
             Icon(
               selected ? data.activeIcon : data.icon,
-              color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+              color: selected
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 4),
             Text(
@@ -639,8 +698,12 @@ class _BottomNavItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+                fontWeight: selected
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: selected
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
           ],

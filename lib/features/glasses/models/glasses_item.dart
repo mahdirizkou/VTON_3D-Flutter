@@ -18,6 +18,8 @@ class GlassesItem {
     this.version,
     this.createdAt,
     this.updatedAt,
+    this.snapLensId,
+    this.snapLensGroupId,
   });
 
   factory GlassesItem.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,8 @@ class GlassesItem {
       version: _readFirst(json, <String>['version'])?.toString(),
       createdAt: _parseDateTime(_readFirst(json, <String>['created_at', 'createdAt'])),
       updatedAt: _parseDateTime(_readFirst(json, <String>['updated_at', 'updatedAt'])),
+      snapLensId: json['snap_lens_id'] as String?,
+      snapLensGroupId: json['snap_lens_group_id'] as String?,
     );
   }
 
@@ -75,6 +79,8 @@ class GlassesItem {
   final String? version;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? snapLensId;
+  final String? snapLensGroupId;
 
   double? get positionOffsetX => positionOffset?.x;
   double? get positionOffsetY => positionOffset?.y;
@@ -100,6 +106,8 @@ class GlassesItem {
     String? version,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? snapLensId,
+    String? snapLensGroupId,
   }) {
     return GlassesItem(
       id: id ?? this.id,
@@ -117,6 +125,8 @@ class GlassesItem {
       version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      snapLensId: snapLensId ?? this.snapLensId,
+      snapLensGroupId: snapLensGroupId ?? this.snapLensGroupId,
     );
   }
 
@@ -137,6 +147,8 @@ class GlassesItem {
       version: other.version ?? version,
       createdAt: other.createdAt ?? createdAt,
       updatedAt: other.updatedAt ?? updatedAt,
+      snapLensId: other.snapLensId ?? snapLensId,
+      snapLensGroupId: other.snapLensGroupId ?? snapLensGroupId,
     );
   }
 
