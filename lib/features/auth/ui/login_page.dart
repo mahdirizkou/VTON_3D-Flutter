@@ -7,6 +7,7 @@ import '../../glasses/ui/home_page.dart';
 import '../data/auth_api.dart';
 import '../data/social_auth_api.dart';
 import 'register_page.dart';
+import 'forgot_password_page.dart'; // ✅ ADDED
 
 // ═══════════════════════════════════════════════════════════════════
 // PALETTE — Luxury Optical Tech
@@ -27,7 +28,7 @@ class _C {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// LOGIN PAGE  —  logique backend 100 % originale
+// LOGIN PAGE
 // ═══════════════════════════════════════════════════════════════════
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,7 +38,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
-  // ── Contrôleurs originaux ──────────────────────────────────────
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey            = GlobalKey<FormState>();
@@ -48,7 +48,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isLoading       = false;
   bool _obscurePassword = true;
 
-  // ── Animations ─────────────────────────────────────────────────
   late final AnimationController _entryCtrl;
   late final AnimationController _pulseCtrl;
   late final Animation<double>   _fadeAnim;
@@ -71,7 +70,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _entryCtrl.forward();
   }
 
-  // ── dispose original ───────────────────────────────────────────
   @override
   void dispose() {
     _usernameController.dispose();
@@ -81,7 +79,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // ── _submit original ───────────────────────────────────────────
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -102,7 +99,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
-  // ── _handleGoogleLogin original ────────────────────────────────
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
     try {
@@ -162,26 +158,20 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     ));
   }
 
-  // ══════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _C.obsidian,
       body: Stack(children: [
-        // Grille hexagonale animée
         Positioned.fill(child: AnimatedBuilder(
           animation: _pulseAnim,
           builder: (_, __) =>
               CustomPaint(painter: _HexGridPainter(_pulseAnim.value)),
         )),
-
-        // Halos lumineux
         _halo(top: -130, right: -90, size: 340,
             color: _C.electric.withOpacity(0.10)),
         _halo(bottom: -100, left: -70, size: 280,
             color: _C.chrome.withOpacity(0.06)),
-
-        // Contenu
         SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -197,15 +187,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Logo lunettes 3D
                           const _GlassesLogo(),
                           const SizedBox(height: 36),
 
-                          // Card formulaire
                           _AuthCard(child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Header lock
                               const Row(children: [
                                 _LockIcon(),
                                 SizedBox(width: 14),
@@ -230,7 +217,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               const _HorizDivider(),
                               const SizedBox(height: 24),
 
-                              // Champ username
                               _OpticalField(
                                 controller: _usernameController,
                                 label: 'IDENTIFIANT',
@@ -241,7 +227,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               ),
                               const SizedBox(height: 16),
 
-                              // Champ password
                               _OpticalField(
                                 controller: _passwordController,
                                 label: 'MOT DE PASSE',
@@ -262,10 +247,19 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               ),
 
                               const SizedBox(height: 8),
+
+                              // ✅ FIXED: was onPressed: () {} — now navigates to ForgotPasswordPage
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {},
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () => Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const ForgotPasswordPage(),
+                                            ),
+                                          ),
                                   style: TextButton.styleFrom(
                                       foregroundColor: _C.electric,
                                       padding: const EdgeInsets.symmetric(
@@ -275,9 +269,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   child: const Text('Mot de passe oublié ?'),
                                 ),
                               ),
+
                               const SizedBox(height: 16),
 
-                              // ── Bouton Login ─────────────────
                               _ChromeButton(
                                 label: 'LOGIN',
                                 isLoading: _isLoading,
@@ -286,7 +280,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                               const SizedBox(height: 16),
 
-                              // ── Bouton Google (original) ─────
                               _GoogleButton(
                                 isLoading: _isLoading,
                                 onTap: _isLoading ? null : _handleGoogleLogin,
@@ -296,7 +289,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
                           const SizedBox(height: 20),
 
-                          // Lien "Create an account"
                           TextButton(
                             onPressed: _isLoading
                                 ? null
@@ -357,7 +349,6 @@ Widget _halo({double? top, double? bottom, double? left, double? right,
   );
 }
 
-// ── Logo Lunettes 3D ──────────────────────────────────────────────
 class _GlassesLogo extends StatelessWidget {
   const _GlassesLogo();
   @override
@@ -436,7 +427,6 @@ class _GlassesPainter extends CustomPainter {
   @override bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-// ── Lock Icon custom ──────────────────────────────────────────────
 class _LockIcon extends StatelessWidget {
   const _LockIcon();
   @override
@@ -492,7 +482,6 @@ class _LockPainter extends CustomPainter {
   @override bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-// ── Champ OpticalField ────────────────────────────────────────────
 class _OpticalField extends StatefulWidget {
   final TextEditingController controller;
   final String label, hint;
@@ -574,7 +563,6 @@ class _OpticalFieldState extends State<_OpticalField> {
   }
 }
 
-// ── Bouton chrome principal ───────────────────────────────────────
 class _ChromeButton extends StatefulWidget {
   final String label;
   final bool isLoading;
@@ -636,7 +624,6 @@ class _ChromeButtonState extends State<_ChromeButton> {
   }
 }
 
-// ── Bouton Google (remplace OutlinedButton original) ─────────────
 class _GoogleButton extends StatefulWidget {
   final bool isLoading;
   final VoidCallback? onTap;
@@ -662,9 +649,7 @@ class _GoogleButtonState extends State<_GoogleButton> {
             color: const Color(0xFF0D1420),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: _pressed
-                  ? _C.electric.withOpacity(0.7)
-                  : _C.border,
+              color: _pressed ? _C.electric.withOpacity(0.7) : _C.border,
               width: 1.5,
             ),
             boxShadow: _pressed ? [
@@ -677,7 +662,6 @@ class _GoogleButtonState extends State<_GoogleButton> {
                   child: CircularProgressIndicator(strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation(_C.electric))))
               : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  // Icône Google en 4 couleurs
                   CustomPaint(
                       painter: _GoogleLogoPainter(),
                       size: const Size(20, 20)),
@@ -692,47 +676,34 @@ class _GoogleButtonState extends State<_GoogleButton> {
   }
 }
 
-// Icône Google dessinée en CustomPainter (4 couleurs officielles)
 class _GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2; final cy = size.height / 2; final r = size.width / 2;
-
-    // Fond blanc du cercle
-    canvas.drawCircle(Offset(cx, cy), r,
-        Paint()..color = Colors.white);
-
-    // Arc rouge (top)
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = Colors.white);
     canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r),
         -pi * 0.15, pi * 0.65, false,
         Paint()..color = const Color(0xFFEA4335)
           ..style = PaintingStyle.stroke ..strokeWidth = r * 0.38);
-    // Arc vert (bottom-right)
     canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r),
         pi * 0.50, pi * 0.52, false,
         Paint()..color = const Color(0xFF34A853)
           ..style = PaintingStyle.stroke ..strokeWidth = r * 0.38);
-    // Arc jaune (bottom-left)
     canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r),
         pi * 1.02, pi * 0.42, false,
         Paint()..color = const Color(0xFFFBBC05)
           ..style = PaintingStyle.stroke ..strokeWidth = r * 0.38);
-    // Arc bleu (left)
     canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r),
         pi * 1.44, pi * 0.41, false,
         Paint()..color = const Color(0xFF4285F4)
           ..style = PaintingStyle.stroke ..strokeWidth = r * 0.38);
-
-    // Barre horizontale du "G"
-    final barPaint = Paint()
-      ..color = const Color(0xFF4285F4) ..style = PaintingStyle.fill;
     canvas.drawRect(
-        Rect.fromLTWH(cx, cy - r * 0.18, r * 0.92, r * 0.36), barPaint);
+        Rect.fromLTWH(cx, cy - r * 0.18, r * 0.92, r * 0.36),
+        Paint()..color = const Color(0xFF4285F4) ..style = PaintingStyle.fill);
   }
   @override bool shouldRepaint(covariant CustomPainter old) => false;
 }
 
-// ── Card ──────────────────────────────────────────────────────────
 class _AuthCard extends StatelessWidget {
   final Widget child;
   const _AuthCard({required this.child});
@@ -755,7 +726,6 @@ class _AuthCard extends StatelessWidget {
   }
 }
 
-// ── Diviseur ─────────────────────────────────────────────────────
 class _HorizDivider extends StatelessWidget {
   const _HorizDivider();
   @override
@@ -764,7 +734,6 @@ class _HorizDivider extends StatelessWidget {
       Colors.transparent, _C.cardBorder, Colors.transparent])));
 }
 
-// ── Footer ────────────────────────────────────────────────────────
 class _Footer extends StatelessWidget {
   final String label;
   const _Footer({required this.label});
@@ -781,7 +750,6 @@ class _Footer extends StatelessWidget {
   }
 }
 
-// ── Grille hexagonale ─────────────────────────────────────────────
 class _HexGridPainter extends CustomPainter {
   final double opacity;
   const _HexGridPainter(this.opacity);
