@@ -124,8 +124,59 @@ class AuthApi {
     await TokenStore.instance.clearTokens();
   }
 
+  // ── Password Reset ────────────────────────────────────────────────
+
+  Future<void> forgotPassword({required String email}) async {
+    final response = await _client.post(
+      Uri.parse('$kBaseUrl$forgotPasswordEndpoint'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) return;
+
+    throw Exception(_readError(response.body));
+  }
+
+  Future<void> verifyResetCode({
+    required String email,
+    required String code,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$kBaseUrl$verifyResetCodeEndpoint'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode == 200) return;
+
+    throw Exception(_readError(response.body));
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$kBaseUrl$resetPasswordEndpoint'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode == 200) return;
+
+    throw Exception(_readError(response.body));
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────
+
   Future<void> _saveTokensFromResponse(Map<String, dynamic> data) async {
-    final access = data['access'] as String?;
+    final access  = data['access']  as String?;
     final refresh = data['refresh'] as String?;
 
     if (access == null || refresh == null || access.isEmpty || refresh.isEmpty) {
@@ -138,15 +189,9 @@ class AuthApi {
   String _readError(String body) {
     try {
       final decoded = jsonDecode(body) as Map<String, dynamic>;
-      if (decoded.containsKey('detail')) {
-        return decoded['detail'].toString();
-      }
-      if (decoded.containsKey('message')) {
-        return decoded['message'].toString();
-      }
-      if (decoded.isNotEmpty) {
-        return decoded.values.first.toString();
-      }
+      if (decoded.containsKey('detail'))  return decoded['detail'].toString();
+      if (decoded.containsKey('message')) return decoded['message'].toString();
+      if (decoded.isNotEmpty)             return decoded.values.first.toString();
     } catch (_) {}
     return 'Request failed.';
   }

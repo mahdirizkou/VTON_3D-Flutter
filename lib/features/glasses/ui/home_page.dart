@@ -16,9 +16,6 @@ import 'product_details_page.dart';
 import 'try_on_page.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/error_state.dart';
-import 'widgets/featured_card.dart';
-import 'widgets/hero_card.dart';
-import 'widgets/recent_try_card.dart';
 import 'widgets/section_header.dart';
 
 class HomePage extends StatefulWidget {
@@ -54,8 +51,6 @@ class _HomePageState extends State<HomePage> {
   final Set<int> _favorites = <int>{};
   Future<GlassesItem>? _tryOnFuture;
   int? _tryOnItemId;
-
-  // ── FIX: track the explicitly selected item separately ──
   GlassesItem? _selectedTryOnItem;
 
   @override
@@ -82,19 +77,10 @@ class _HomePageState extends State<HomePage> {
 
   List<GlassesItem> get _recentlyTried => _items.take(6).toList();
 
-  // ── FIX: _primaryTryOnItem now respects the user's explicit selection ──
   GlassesItem? get _primaryTryOnItem {
-    // If user explicitly selected an item, use it
-    if (_selectedTryOnItem != null) {
-      return _selectedTryOnItem;
-    }
-    // Default: first filtered item
-    if (_filteredItems.isNotEmpty) {
-      return _filteredItems.first;
-    }
-    if (_items.isNotEmpty) {
-      return _items.first;
-    }
+    if (_selectedTryOnItem != null) return _selectedTryOnItem;
+    if (_filteredItems.isNotEmpty) return _filteredItems.first;
+    if (_items.isNotEmpty) return _items.first;
     return null;
   }
 
@@ -115,7 +101,6 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       setState(() {
         _items = loaded;
-        // Reset selection only if no item was explicitly selected
         if (_selectedTryOnItem == null) {
           _tryOnFuture = null;
           _tryOnItemId = null;
@@ -133,9 +118,7 @@ class _HomePageState extends State<HomePage> {
       });
     } finally {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -187,7 +170,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ── FIX: always load the specific item passed, never override with first ──
   void _selectItemForTryOn(GlassesItem item) {
     setState(() {
       _selectedIndex = 1;
@@ -199,9 +181,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<GlassesItem> _prepareTryOnItem() async {
     final GlassesItem? selected = _primaryTryOnItem;
-    if (selected == null) {
-      throw Exception('No glasses available yet.');
-    }
+    if (selected == null) throw Exception('No glasses available yet.');
     try {
       return await _glassesApi.fetchTryOnPayload(selected);
     } on ApiUnauthorizedException {
@@ -218,10 +198,7 @@ class _HomePageState extends State<HomePage> {
       _tryOnItemId = null;
       return;
     }
-    // ── FIX: only reinitialize if item actually changed ──
-    if (_tryOnFuture != null && _tryOnItemId == selected.id) {
-      return;
-    }
+    if (_tryOnFuture != null && _tryOnItemId == selected.id) return;
     _tryOnItemId = selected.id;
     _tryOnFuture = _prepareTryOnItem();
   }
@@ -249,9 +226,29 @@ class _HomePageState extends State<HomePage> {
       });
       return;
     }
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
+  }
+
+  Future<GlassesItem> _loadSpecificTryOnItem(GlassesItem item) async {
+    try {
+      return await _glassesApi.fetchTryOnPayload(item);
+    } on ApiUnauthorizedException {
+      rethrow;
+    } catch (_) {
+      return item;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _buildPageForIndex(),
+      bottomNavigationBar: _buildBottomNav(),
+    );
   }
 
   Widget _buildPageForIndex() {
@@ -265,34 +262,25 @@ class _HomePageState extends State<HomePage> {
           allItems: _items,
           favoriteIds: _favorites,
           onToggleFavorite: _toggleFavorite,
-          onTryTap: (GlassesItem item) {
-            _selectItemForTryOn(item);
-          },
+          onTryTap: _selectItemForTryOn,
         ),
         const ProfilePage(),
       ],
     );
   }
 
-  Future<GlassesItem> _loadSpecificTryOnItem(GlassesItem item) async {
-    try {
-      return await _glassesApi.fetchTryOnPayload(item);
-    } on ApiUnauthorizedException {
-      rethrow;
-    } catch (_) {
-      return item;
-    }
-  }
+  // ---------------------------------------------------------------------------
+  // Home Tab
+  // ---------------------------------------------------------------------------
 
   Widget _buildHomeTab() {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final double width = MediaQuery.of(context).size.width;
-    final double featuredCardWidth =
-        width < 380 ? width * 0.72 : width * 0.62;
+    final double featuredCardWidth = width < 380 ? width * 0.72 : width * 0.62;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VTON 3D Glasses'),
+        title: const Text('VTON Glasses'),
         leading: Padding(
           padding: const EdgeInsets.only(left: 12),
           child: CircleAvatar(
@@ -317,11 +305,8 @@ class _HomePageState extends State<HomePage> {
             icon: CircleAvatar(
               radius: 14,
               backgroundColor: colorScheme.secondaryContainer,
-              child: Icon(
-                Icons.person,
-                size: 16,
-                color: colorScheme.onSecondaryContainer,
-              ),
+              child: Icon(Icons.person,
+                  size: 16, color: colorScheme.onSecondaryContainer),
             ),
             onPressed: () => _onDestinationSelected(4),
           ),
@@ -352,20 +337,20 @@ class _HomePageState extends State<HomePage> {
                         onRefresh: _fetchGlasses,
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
                           children: <Widget>[
-                            HeroCard(
-                              onStartTryOn: () =>
-                                  _onDestinationSelected(1),
+                            // ── Hero Banner ──
+                            _HeroBanner(
+                              onStartTryOn: () => _onDestinationSelected(1),
                             ),
                             const SizedBox(height: 16),
+
+                            // ── Search ──
                             TextField(
                               controller: _searchController,
                               textInputAction: TextInputAction.search,
                               decoration: InputDecoration(
-                                hintText:
-                                    'Search by frame, brand, style...',
+                                hintText: 'Search by frame, brand, style...',
                                 prefixIcon: const Icon(Icons.search),
                                 suffixIcon: _searchQuery.isNotEmpty
                                     ? IconButton(
@@ -382,7 +367,8 @@ class _HomePageState extends State<HomePage> {
                                       )
                                     : null,
                                 filled: true,
-                                fillColor: colorScheme
+                                fillColor: Theme.of(context)
+                                    .colorScheme
                                     .surfaceContainerHighest
                                     .withOpacity(0.35),
                                 border: OutlineInputBorder(
@@ -390,24 +376,22 @@ class _HomePageState extends State<HomePage> {
                                   borderSide: BorderSide.none,
                                 ),
                               ),
-                              onSubmitted: (String value) {
-                                setState(() {
-                                  _searchQuery = value;
-                                  _tryOnFuture = null;
-                                  _tryOnItemId = null;
-                                  _selectedTryOnItem = null;
-                                });
-                              },
-                              onChanged: (String value) {
-                                setState(() {
-                                  _searchQuery = value;
-                                  _tryOnFuture = null;
-                                  _tryOnItemId = null;
-                                  _selectedTryOnItem = null;
-                                });
-                              },
+                              onSubmitted: (String value) => setState(() {
+                                _searchQuery = value;
+                                _tryOnFuture = null;
+                                _tryOnItemId = null;
+                                _selectedTryOnItem = null;
+                              }),
+                              onChanged: (String value) => setState(() {
+                                _searchQuery = value;
+                                _tryOnFuture = null;
+                                _tryOnItemId = null;
+                                _selectedTryOnItem = null;
+                              }),
                             ),
                             const SizedBox(height: 14),
+
+                            // ── Categories ──
                             SizedBox(
                               height: 40,
                               child: ListView.separated(
@@ -415,36 +399,33 @@ class _HomePageState extends State<HomePage> {
                                 itemCount: _categories.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(width: 8),
-                                itemBuilder:
-                                    (BuildContext context, int index) {
-                                  final String category =
-                                      _categories[index];
+                                itemBuilder: (BuildContext context, int index) {
+                                  final String category = _categories[index];
                                   final bool selected =
                                       category == _selectedCategory;
                                   return ChoiceChip(
                                     selected: selected,
                                     label: Text(category),
-                                    onSelected: (_) {
-                                      setState(() {
-                                        _selectedCategory = category;
-                                        _tryOnFuture = null;
-                                        _tryOnItemId = null;
-                                        _selectedTryOnItem = null;
-                                      });
-                                    },
+                                    onSelected: (_) => setState(() {
+                                      _selectedCategory = category;
+                                      _tryOnFuture = null;
+                                      _tryOnItemId = null;
+                                      _selectedTryOnItem = null;
+                                    }),
                                   );
                                 },
                               ),
                             ),
                             const SizedBox(height: 20),
+
+                            // ── Featured Glasses ──
                             SectionHeader(
                               title: 'Featured Glasses',
-                              trailing:
-                                  '${_filteredItems.length} items',
+                              trailing: '${_filteredItems.length} items',
                             ),
                             const SizedBox(height: 10),
                             SizedBox(
-                              height: 280,
+                              height: 300,
                               child: _filteredItems.isEmpty
                                   ? const EmptyState(
                                       title: 'No glasses found',
@@ -456,19 +437,17 @@ class _HomePageState extends State<HomePage> {
                                       itemCount: _filteredItems.length,
                                       separatorBuilder: (_, __) =>
                                           const SizedBox(width: 12),
-                                      itemBuilder: (BuildContext context,
-                                          int index) {
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
                                         final GlassesItem item =
                                             _filteredItems[index];
-                                        final bool isFavorite =
-                                            _favorites.contains(item.id);
-                                        return FeaturedCard(
+                                        return _FeaturedCard(
                                           item: item,
                                           width: featuredCardWidth,
-                                          isFavorite: isFavorite,
+                                          isFavorite:
+                                              _favorites.contains(item.id),
                                           onFavoriteTap: () =>
                                               _toggleFavorite(item.id),
-                                          // ── FIX: use _selectItemForTryOn ──
                                           onTryTap: () =>
                                               _selectItemForTryOn(item),
                                           onBuyTap: () => _buyNow(item),
@@ -479,8 +458,9 @@ class _HomePageState extends State<HomePage> {
                                     ),
                             ),
                             const SizedBox(height: 20),
-                            const SectionHeader(
-                                title: 'Recently Tried'),
+
+                            // ── Recently Tried ──
+                            const SectionHeader(title: 'Recently Tried'),
                             const SizedBox(height: 10),
                             SizedBox(
                               height: 160,
@@ -489,17 +469,14 @@ class _HomePageState extends State<HomePage> {
                                 itemCount: _recentlyTried.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(width: 12),
-                                itemBuilder: (BuildContext context,
-                                    int index) {
+                                itemBuilder: (BuildContext context, int index) {
                                   final GlassesItem item =
                                       _recentlyTried[index];
-                                  return RecentTryCard(
+                                  return _RecentTryCard(
                                     item: item,
-                                    // ── FIX: use _selectItemForTryOn ──
                                     onTryAgain: () =>
                                         _selectItemForTryOn(item),
-                                    onTap: () =>
-                                        _openProductDetails(item),
+                                    onTap: () => _openProductDetails(item),
                                   );
                                 },
                               ),
@@ -511,11 +488,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Try-On Tab
+  // ---------------------------------------------------------------------------
+
   Widget _buildTryOnTab() {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final GlassesItem? selected = _primaryTryOnItem;
@@ -533,8 +512,7 @@ class _HomePageState extends State<HomePage> {
 
     return FutureBuilder<GlassesItem>(
       future: _tryOnFuture,
-      builder:
-          (BuildContext context, AsyncSnapshot<GlassesItem> snapshot) {
+      builder: (BuildContext context, AsyncSnapshot<GlassesItem> snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -548,9 +526,8 @@ class _HomePageState extends State<HomePage> {
               appBar: AppBar(title: const Text('Try-On')),
               body: ErrorState(
                 error: error.toString(),
-                onRetry: () async {
-                  await _redirectToLogin(message: error.toString());
-                },
+                onRetry: () async =>
+                    _redirectToLogin(message: error.toString()),
               ),
             );
           }
@@ -563,12 +540,15 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-        // ── FIX: use snapshot data which contains the correct item ──
         final GlassesItem resolvedItem = snapshot.data ?? selected;
         return TryOnPage(item: resolvedItem);
       },
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Bottom Nav
+  // ---------------------------------------------------------------------------
 
   Widget _buildBottomNav() {
     const List<_NavItemData> items = <_NavItemData>[
@@ -599,8 +579,7 @@ class _HomePageState extends State<HomePage> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
@@ -616,8 +595,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           child: Row(
-            children:
-                List<Widget>.generate(items.length, (int index) {
+            children: List<Widget>.generate(items.length, (int index) {
               final _NavItemData item = items[index];
               final bool selected = index == _selectedIndex;
               return Expanded(
@@ -633,15 +611,428 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+// =============================================================================
+// Featured Card  (image-based, replaces GlassesModelViewer)
+// =============================================================================
+
+class _FeaturedCard extends StatelessWidget {
+  const _FeaturedCard({
+    required this.item,
+    required this.width,
+    required this.isFavorite,
+    required this.onFavoriteTap,
+    required this.onTryTap,
+    required this.onBuyTap,
+    required this.onTap,
+  });
+
+  final GlassesItem item;
+  final double width;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
+  final VoidCallback onTryTap;
+  final VoidCallback onBuyTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildPageForIndex(),
-      bottomNavigationBar: _buildBottomNav(),
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: cs.outlineVariant),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // ── Product Image ──
+            Stack(
+              children: <Widget>[
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 1.3,
+                    child: _GlassesImage(
+                      url: item.thumbnailUrl,
+                      fallbackSeed: 'card_${item.id}',
+                    ),
+                  ),
+                ),
+                // Favorite button
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: _CircleIconButton(
+                    icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.redAccent : cs.onSurface,
+                    onTap: onFavoriteTap,
+                  ),
+                ),
+                // Rating badge
+                if (item.rating != null)
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(Icons.star_rounded,
+                              color: Colors.amber, size: 14),
+                          const SizedBox(width: 3),
+                          Text(
+                            item.rating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            // ── Info ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  if (item.brand != null) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.brand!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(
+                    '\$${item.price.toStringAsFixed(2)}',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Actions ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: onTryTap,
+                      child: const Text('Try On',
+                          style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: onBuyTap,
+                      child: const Text('Add Cart',
+                          style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
+// =============================================================================
+// Recent Try Card  (image-based)
+// =============================================================================
+
+class _RecentTryCard extends StatelessWidget {
+  const _RecentTryCard({
+    required this.item,
+    required this.onTryAgain,
+    required this.onTap,
+  });
+
+  final GlassesItem item;
+  final VoidCallback onTryAgain;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // Image
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              child: AspectRatio(
+                aspectRatio: 1.4,
+                child: _GlassesImage(
+                  url: item.thumbnailUrl,
+                  fallbackSeed: 'recent_${item.id}',
+                ),
+              ),
+            ),
+
+            // Name + Try Again
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: onTryAgain,
+                    child: Text(
+                      'Try again',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Hero Banner
+// =============================================================================
+
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({required this.onStartTryOn});
+
+  final VoidCallback onStartTryOn;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[
+            cs.primaryContainer,
+            cs.secondaryContainer,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  'Find your\nperfect frame',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onPrimaryContainer,
+                        height: 1.2,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: onStartTryOn,
+                  icon: const Icon(Icons.videocam_outlined, size: 16),
+                  label: const Text('Try On Now',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(
+            Icons.auto_awesome_rounded,
+            size: 72,
+            color: cs.primary.withOpacity(0.25),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Shared image widget  (replaces GlassesModelViewer everywhere)
+// =============================================================================
+
+class _GlassesImage extends StatelessWidget {
+  const _GlassesImage({required this.url, required this.fallbackSeed});
+
+  final String? url;
+  final String fallbackSeed;
+
+  @override
+  Widget build(BuildContext context) {
+    final String effectiveUrl = (url != null && url!.isNotEmpty)
+        ? url!
+        : 'https://picsum.photos/seed/$fallbackSeed/400/300';
+
+    return Image.network(
+      effectiveUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (BuildContext context, Widget child,
+          ImageChunkEvent? loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (BuildContext context, Object error, StackTrace? _) {
+        return Container(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Center(
+            child: Icon(
+              Icons.image_not_supported_outlined,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 32,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// =============================================================================
+// Circle icon button helper
+// =============================================================================
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.88),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Nav helpers
+// =============================================================================
 
 class _NavItemData {
   const _NavItemData({
@@ -675,12 +1066,10 @@ class _BottomNavItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? colorScheme.primaryContainer
-              : Colors.transparent,
+          color:
+              selected ? colorScheme.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -698,9 +1087,8 @@ class _BottomNavItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: selected
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+                fontWeight:
+                    selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected
                     ? colorScheme.onPrimaryContainer
                     : colorScheme.onSurfaceVariant,

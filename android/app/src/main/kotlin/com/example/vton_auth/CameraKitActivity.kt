@@ -42,7 +42,7 @@ class CameraKitActivity : AppCompatActivity() {
 
     private fun startCameraKit() {
         val lensGroupId = intent.getStringExtra("lens_group_id")
-            ?: "12433cb9-95e5-4ecc-a9b4-9cbad9b43e7b"
+            ?: "b230e5ad-3a59-46ea-8e19-d7b231ce88ae"
         val lensId = intent.getStringExtra("lens_id")
             ?: "2ce6c480-9472-4b71-8451-da1e33f06a59"
 

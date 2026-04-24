@@ -27,7 +27,7 @@ class _C {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROFILE PAGE  —  logique backend 100 % originale
+// PROFILE PAGE
 // ═══════════════════════════════════════════════════════════════════
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -38,7 +38,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
-  // ── API originale ──────────────────────────────────────────────
   final AuthApi _authApi = AuthApi();
 
   bool _isLoading    = true;
@@ -46,7 +45,6 @@ class _ProfilePageState extends State<ProfilePage>
   String? _error;
   Map<String, dynamic>? _me;
 
-  // ── Animation ──────────────────────────────────────────────────
   late final AnimationController _entryCtrl;
   late final Animation<double>   _fadeAnim;
   late final Animation<Offset>   _slideAnim;
@@ -65,7 +63,6 @@ class _ProfilePageState extends State<ProfilePage>
   @override
   void dispose() { _entryCtrl.dispose(); super.dispose(); }
 
-  // ── _loadProfile original ──────────────────────────────────────
   Future<void> _loadProfile() async {
     setState(() { _isLoading = true; _error = null; });
     try {
@@ -86,7 +83,6 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  // ── _logoutAndGoLogin original ─────────────────────────────────
   Future<void> _logoutAndGoLogin({String? message}) async {
     if (_isLoggingOut) return;
     setState(() => _isLoggingOut = true);
@@ -114,14 +110,13 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _C.obsidian,
       appBar: _buildAppBar(),
       body: Stack(children: [
-        // Halo décoratif
+        // Decorative halos
         Positioned(top: -80, right: -60,
           child: Container(width: 220, height: 220,
             decoration: BoxDecoration(shape: BoxShape.circle,
@@ -165,48 +160,32 @@ class _ProfilePageState extends State<ProfilePage>
                         children: [
                           const SizedBox(height: 8),
 
-                          // ── Avatar + nom ─────────────────────
+                          // Avatar + name
                           _ProfileHeader(
                             username: (_me?['username'] ?? '-').toString(),
                             email: (_me?['email'] ?? '-').toString(),
                           ),
                           const SizedBox(height: 20),
 
-                          // ── Stats rapides ─────────────────────
+                          // Quick stats
                           _QuickStats(),
                           const SizedBox(height: 20),
 
-                          // ── Account Info (original) ───────────
+                          // Account Info
                           _InfoCard(
                             title: 'Account Info',
                             icon: Icons.person_outline_rounded,
                             iconColor: _C.electric,
                             items: [
-                              _InfoRowData(label: 'ID',
-                                  value: (_me?['id'] ?? '-').toString()),
                               _InfoRowData(label: 'Username',
                                   value: (_me?['username'] ?? '-').toString()),
                               _InfoRowData(label: 'Email',
                                   value: (_me?['email'] ?? '-').toString()),
                             ],
                           ),
-                          const SizedBox(height: 14),
-
-                          // ── Session (original) ────────────────
-                          const _InfoCard(
-                            title: 'Session',
-                            icon: Icons.shield_outlined,
-                            iconColor: _C.success,
-                            items: [
-                              _InfoRowData(label: 'Status',
-                                  value: 'Authenticated'),
-                              _InfoRowData(label: 'Backend',
-                                  value: 'Django JWT'),
-                            ],
-                          ),
                           const SizedBox(height: 28),
 
-                          // ── Bouton Logout (original) ──────────
+                          // Logout button
                           _LogoutButton(
                             isLoading: _isLoggingOut,
                             onTap: _isLoggingOut ? null : _logoutAndGoLogin,
@@ -267,7 +246,7 @@ class _ProfilePageState extends State<ProfilePage>
         child: CircularProgressIndicator(strokeWidth: 2.5,
             valueColor: AlwaysStoppedAnimation(_C.electric))),
       SizedBox(height: 14),
-      Text('Chargement du profil…',
+      Text('Loading profile…',
           style: TextStyle(color: _C.textSec, fontSize: 13)),
     ]);
   }
@@ -277,7 +256,6 @@ class _ProfilePageState extends State<ProfilePage>
 // WIDGETS
 // ═══════════════════════════════════════════════════════════════════
 
-// ── Header profil ─────────────────────────────────────────────────
 class _ProfileHeader extends StatelessWidget {
   final String username, email;
   const _ProfileHeader({required this.username, required this.email});
@@ -319,7 +297,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(width: 16),
 
-        // Nom + email
+        // Name + email
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(username, style: const TextStyle(fontSize: 20,
@@ -339,7 +317,7 @@ class _ProfileHeader extends StatelessWidget {
           ),
         ])),
 
-        // Icône edit
+        // Edit icon
         Container(
           width: 36, height: 36,
           decoration: BoxDecoration(
@@ -353,7 +331,6 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-// ── Stats rapides ─────────────────────────────────────────────────
 class _QuickStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -379,7 +356,6 @@ class _QuickStats extends StatelessWidget {
   }
 }
 
-// ── Info card ─────────────────────────────────────────────────────
 class _InfoCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -402,7 +378,6 @@ class _InfoCard extends StatelessWidget {
             blurRadius: 12, offset: const Offset(0, 3))],
       ),
       child: Column(children: [
-        // Header section
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           decoration: BoxDecoration(
@@ -424,8 +399,6 @@ class _InfoCard extends StatelessWidget {
                 fontWeight: FontWeight.w800, color: _C.textPrim, letterSpacing: 0.3)),
           ]),
         ),
-
-        // Rows
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(children: List.generate(items.length, (i) {
@@ -452,13 +425,11 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-// ── InfoRowData ───────────────────────────────────────────────────
 class _InfoRowData {
   final String label, value;
   const _InfoRowData({required this.label, required this.value});
 }
 
-// ── Bouton Logout ─────────────────────────────────────────────────
 class _LogoutButton extends StatefulWidget {
   final bool isLoading;
   final VoidCallback? onTap;
@@ -483,14 +454,10 @@ class _LogoutButtonState extends State<_LogoutButton> {
           duration: const Duration(milliseconds: 200),
           height: 54,
           decoration: BoxDecoration(
-            color: _pressed
-                ? _C.error.withOpacity(0.15)
-                : _C.surface,
+            color: _pressed ? _C.error.withOpacity(0.15) : _C.surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: _pressed
-                  ? _C.error.withOpacity(0.7)
-                  : _C.error.withOpacity(0.4),
+              color: _pressed ? _C.error.withOpacity(0.7) : _C.error.withOpacity(0.4),
               width: 1.5),
             boxShadow: _pressed ? [BoxShadow(
                 color: _C.error.withOpacity(0.15),
@@ -519,7 +486,6 @@ class _LogoutButtonState extends State<_LogoutButton> {
   }
 }
 
-// ── Error card ────────────────────────────────────────────────────
 class _ErrorCard extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
@@ -566,7 +532,6 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-// ── StatTile widget ──────────────────────────────────────────────
 class _StatTile extends StatelessWidget {
   final _StatData data;
   const _StatTile(this.data, {super.key});
@@ -588,7 +553,6 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-// ── StatData ──────────────────────────────────────────────────────
 class _StatData {
   final String value, label;
   final IconData icon;
